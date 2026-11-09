@@ -188,11 +188,38 @@ def parse_oab(s):
 
 
 # ---------------------------------------------------------------- DJEN
+# O DJEN recusa servidores fora do Brasil. Por isso o robô consulta pela função "djen"
+# do Supabase, que roda em São Paulo. DJEN_DIRETO=1 consulta direto (ex.: robô num PC no Brasil).
+DJEN_DIRETO = os.environ.get("DJEN_DIRETO", "").strip() in ("1", "sim", "true")
+_PONTE = {"ok": None}
+
+
+def djen_get(q):
+    qs = urllib.parse.urlencode(q)
+    if not DJEN_DIRETO and _PONTE["ok"] is not False:
+        h = {"apikey": SB_KEY, "User-Agent": UA_SB, "x-region": "sa-east-1"}
+        if SB_KEY.startswith("eyJ"):
+            h["Authorization"] = "Bearer " + SB_KEY
+        try:
+            j = http("GET", f"{SB_URL}/functions/v1/djen?{qs}", headers=h, timeout=90)
+            if _PONTE["ok"] is None:
+                log("DJEN: consultando pela ponte do Supabase em São Paulo.")
+            _PONTE["ok"] = True
+            return j
+        except Exception as e:
+            if _PONTE["ok"] is None and re.search(r"HTTP (401|404)", str(e)):
+                _PONTE["ok"] = False  # função não instalada ou chave recusada: tenta direto
+                log(f"DJEN: ponte do Supabase indisponível ({str(e)[:120]}); tentando direto.")
+            else:
+                raise
+    return http("GET", DJEN_URL + "?" + qs, timeout=90)
+
+
 def djen(params):
     itens = []
     for pag in range(1, 21):
         q = {**params, "pagina": pag, "itensPorPagina": 100}
-        j = http("GET", DJEN_URL + "?" + urllib.parse.urlencode(q), timeout=90) or {}
+        j = djen_get(q) or {}
         lote = j.get("items") or j.get("itens") or j.get("content") or []
         itens += lote
         if len(lote) < 100:
