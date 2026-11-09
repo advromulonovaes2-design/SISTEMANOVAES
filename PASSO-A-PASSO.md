@@ -148,6 +148,20 @@ Funciona como a notificação de qualquer aplicativo, sem depender de Telegram o
 
 O robô manda o aviso para o celular de cada responsável junto com os outros canais. Aparelhos que desinstalaram o app saem da lista sozinhos.
 
+## 13. Botão "Buscar agora" nas Intimações
+
+Além das buscas automáticas (segunda a sexta, 7h e 16h), a aba **Intimações** tem o botão **Buscar agora**: ele pede ao robô uma busca no DJEN na hora. Leva de 1 a 3 minutos e as novas aparecem sozinhas na tela. Essa busca não manda avisos por Telegram, e-mail ou WhatsApp.
+
+Para ligar o botão (uma vez só), o GitHub precisa de um token que só sabe rodar o robô:
+1. No GitHub, clique na sua foto → **Settings** → no fim do menu, **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+2. **Token name**: `botao-buscar`. **Expiration**: a maior data que aparecer (anote para renovar).
+3. **Repository access**: **Only select repositories** → escolha **SISTEMANOVAES**.
+4. **Permissions** → **Repository permissions** → **Actions**: **Read and write**. Não marque mais nada.
+5. **Generate token** e copie (começa com `github_pat_`). Ele só aparece uma vez.
+6. No Supabase: **Edge Functions** → **Secrets** → **Add new secret**. Nome `GITHUB_TOKEN`, valor: o token. **Save**.
+
+A função `buscar-intimacoes` já está instalada no Supabase (o código fica em `supabase/functions`). Ela confere se quem apertou está liberado no sistema antes de chamar o robô. Quando o token vencer, o botão avisa; é só gerar outro e trocar o secret.
+
 ---
 
 ## Como funciona a assinatura da procuração e do contrato

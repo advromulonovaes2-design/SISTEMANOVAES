@@ -21,6 +21,8 @@ A versão em uso aparece em **Ajustes → Sobre**.
 - **Sair da conta** desconecta só o aparelho em uso.
 - Saiu o campo "Pode entrar no sistema" do cadastro da Equipe (o acesso agora fica na aba Acessos).
 - Sistema publicado direto na raiz do repositório.
+- Botão **Sair** no topo, com o nome e o papel de quem está logado.
+- Botão **Buscar agora** na aba Intimações (função `buscar-intimacoes` no Supabase + secret `GITHUB_TOKEN`), com o horário e o resultado da última busca. O robô ganhou o modo "busca", que só procura intimações e não manda avisos.
 
 ## Versão 3 · 05/11/2026
 

@@ -42,7 +42,8 @@ from email.utils import formataddr
 
 TZ = timezone(timedelta(hours=-3))  # Belém (sem horário de verão)
 HOJE = datetime.now(TZ).date()
-MODO = os.environ.get("MODO", "manha")  # manha = tudo; tarde = só intimações e movimentações
+MODO = os.environ.get("MODO", "manha")  # manha = tudo; tarde = só intimações e movimentações; busca = botão "Buscar agora"
+STATUS = {"djen": "não consultado", "consultas": 0, "novas": 0}
 SB_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 TG_TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
@@ -518,6 +519,8 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
             log(f"DJEN cliente {c['nome']}: ERRO {e}")
         time.sleep(1)
 
+    STATUS["consultas"] = sucesso
+    STATUS["djen"] = "falhou" if falhas and not sucesso else ("ok" if sucesso else "sem OAB cadastrada")
     if falhas and not sucesso:
         avisos["_geral"].append("O robô não conseguiu acessar o DJEN nesta rodada. Confira as intimações manualmente em comunica.pje.jus.br hoje.")
         log("ATENÇÃO: todas as consultas ao DJEN falharam. Se o erro for 403, o DJEN pode estar bloqueando servidores fora do Brasil: veja o plano B no passo a passo.")
@@ -817,6 +820,15 @@ def montar_mensagem(itens):
     return "\n\n".join(blocos)
 
 
+def registrar_status():
+    """Guarda quando o robô rodou, para o sistema mostrar "última busca"."""
+    try:
+        sb("POST", "config", {"id": "robo", "dados": {"ultimaExecucao": datetime.now(TZ).isoformat(), "modo": MODO, **STATUS}},
+           prefer="resolution=merge-duplicates,return=minimal")
+    except Exception as e:
+        log(f"Não registrei o horário da busca: {e}")
+
+
 def main():
     log(f"Robô do escritório — {HOJE.strftime('%d/%m/%Y')} — modo {MODO}")
     if not SB_URL or not SB_KEY:
@@ -832,10 +844,18 @@ def main():
     log(f"Equipe ativa: {len(equipe)} · clientes: {len(clientes)} · processos: {len(processos)}")
     avisos = defaultdict(list)
 
-    buscar_intimacoes(equipe, clientes, processos, avisos)
+    try:
+        STATUS["novas"] = buscar_intimacoes(equipe, clientes, processos, avisos) or 0
+    except Exception as e:
+        STATUS["djen"] = f"erro: {e}"
+        log(f"Busca no DJEN: erro {e}")
     atualizar_movimentacoes(processos, avisos)
+    if MODO == "busca":  # botão "Buscar agora": quem apertou está olhando a tela, então não manda avisos
+        registrar_status()
+        log(f"Busca pelo botão concluída: {STATUS}")
+        return
     avisar_envios(equipe, processos, clientes, avisos)
-    if MODO != "tarde":
+    if MODO not in ("tarde", "busca"):
         try:
             calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos)
             calcular_avisos_financeiro(registros("honorarios"), clientes, equipe, avisos)
@@ -881,6 +901,7 @@ def main():
             for m in advogados:  # o grupo recebeu o texto; os advogados recebem o aviso no celular
                 enviar_push_membro(m, assunto, texto)
     log(f"Avisos enviados: {ENVIADOS}")
+    registrar_status()
     if (MODO != "tarde" and HOJE.weekday() == 0) or FORCAR_BACKUP:
         try:
             fazer_backup()

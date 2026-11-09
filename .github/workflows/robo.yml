@@ -11,6 +11,14 @@ on:
         description: 'Fazer a cópia de segurança agora'
         type: boolean
         default: false
+      busca:
+        description: 'Só buscar intimações (botão "Buscar agora" do sistema, sem mandar avisos)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: robo
+  cancel-in-progress: false
 
 jobs:
   rodar:
@@ -27,7 +35,7 @@ jobs:
       - name: Rodar o robô
         run: python robo/robo.py
         env:
-          MODO: ${{ github.event.schedule == '7 19 * * 1-5' && 'tarde' || 'manha' }}
+          MODO: ${{ github.event.schedule == '7 19 * * 1-5' && 'tarde' || (inputs.busca && 'busca' || 'manha') }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
