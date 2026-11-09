@@ -59,6 +59,8 @@ FORCAR_BACKUP = os.environ.get("FORCAR_BACKUP", "").strip() in ("1", "sim", "tru
 DATAJUD_KEY = os.environ.get("DATAJUD_KEY", "").strip() or "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
 DIAS_DJEN = int(os.environ.get("DIAS_DJEN", "3") or 3)
 UA = "Mozilla/5.0 (compatible; robo-escritorio/1.0)"
+# o Supabase recusa a chave secreta quando o pedido parece vir de um navegador ("Mozilla")
+UA_SB = "robo-escritorio/1.0 (python-urllib)"
 DJEN_URL = "https://comunicaapi.pje.jus.br/api/v1/comunicacao"
 
 
@@ -101,7 +103,7 @@ def sb(method, path, body=None, params=None, prefer=None):
     url = f"{SB_URL}/rest/v1/{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params, safe=",.()*:\"")
-    h = {"apikey": SB_KEY}
+    h = {"apikey": SB_KEY, "User-Agent": UA_SB}
     if SB_KEY.startswith("eyJ"):  # chave antiga (JWT); as novas sb_secret_ vão só no apikey
         h["Authorization"] = "Bearer " + SB_KEY
     if prefer:
@@ -723,7 +725,7 @@ def ler_tudo(tabela):
 
 
 def storage(method, caminho, corpo=None, tipo="application/json", extra=None):
-    h = {"apikey": SB_KEY, "User-Agent": UA}
+    h = {"apikey": SB_KEY, "User-Agent": UA_SB}
     if SB_KEY.startswith("eyJ"):
         h["Authorization"] = "Bearer " + SB_KEY
     h.update(extra or {})
