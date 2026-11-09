@@ -1,0 +1,41 @@
+name: Robô do escritório
+
+on:
+  schedule:
+    # Horários em UTC. 10:07 UTC = 7:07 em Belém; 19:07 UTC = 16:07 em Belém. Segunda a sexta.
+    - cron: '7 10 * * 1-5'
+    - cron: '7 19 * * 1-5'
+  workflow_dispatch:      # botão "Run workflow" para rodar na hora
+    inputs:
+      backup:
+        description: 'Fazer a cópia de segurança agora'
+        type: boolean
+        default: false
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar o pacote das notificações no celular
+        run: pip install --quiet cryptography
+        continue-on-error: true
+      - name: Rodar o robô
+        run: python robo/robo.py
+        env:
+          MODO: ${{ github.event.schedule == '7 19 * * 1-5' && 'tarde' || 'manha' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_GRUPO: ${{ secrets.TELEGRAM_GRUPO }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ALERTA_EMAIL: ${{ secrets.ALERTA_EMAIL }}
+          APP_URL: ${{ secrets.APP_URL }}
+          DATAJUD_KEY: ${{ secrets.DATAJUD_KEY }}
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
+          FORCAR_BACKUP: ${{ inputs.backup && '1' || '' }}
