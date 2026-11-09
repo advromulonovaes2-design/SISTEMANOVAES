@@ -122,3 +122,12 @@ document.addEventListener('change',e=>{
   if(e.target.id==='procSo'){UI.procSo=e.target.checked;body_();}
 });
 document.addEventListener('click',e=>{const b=e.target.closest('[data-cadproc]');if(b){e.preventDefault();cadastrarProcessoDaOab(b.dataset.cadproc);}});
+/* a lista de OABs depende da Equipe, que pode carregar depois da tela */
+function preencherOabsBusca(){
+  const s=$('#buscaOab');if(!s)return;const oabs=oabsDaEquipe();if(s.options.length-1===oabs.length)return;
+  const atual=s.value||lerPref('oab','');
+  s.innerHTML=`<option value="">Todas as OABs</option>${oabs.map(o=>`<option value="${esc(o.oab)}">${esc(o.oab)} · ${esc(o.nome.split(' ')[0])}</option>`).join('')}`;
+  if([...s.options].some(o=>o.value===atual))s.value=atual;
+}
+const AFTER_INT=VIEWS.intimacoes.after;
+VIEWS.intimacoes.after=function(){if(AFTER_INT)AFTER_INT();preencherOabsBusca();};
