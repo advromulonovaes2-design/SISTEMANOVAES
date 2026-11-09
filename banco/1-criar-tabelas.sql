@@ -177,7 +177,9 @@ declare
   ult bigint;
 begin
   -- o registro do horário do robô não entra no histórico
-  if tg_table_name = 'config' and coalesce(new.id, old.id) = 'robo' then return null; end if;
+  if tg_table_name = 'config' then
+    if coalesce(new.id::text, old.id::text) = 'robo' then return null; end if;
+  end if;
   d := case when tg_op = 'DELETE' then old.dados else new.dados end;
   tit := coalesce(d ->> 'nome', d ->> 'titulo', d ->> 'descricao', d ->> 'numero', d ->> 'reus', d ->> 'objeto', '');
   if tg_op = 'DELETE' then

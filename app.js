@@ -533,7 +533,7 @@ const FORMS={
     {k:'obs',l:'Observações',t:'area',hint:'O modo de pagamento dos honorários fica na aba Financeiro.'}]},
   processos:{t:'Processo',f:[
     {k:'numero',l:'Número (CNJ) ou protocolo do INSS',t:'text',ph:'0000000-00.0000.0.00.0000',fmt:'cnj',mono:1,hint:'Cole os 20 dígitos que o sistema formata. A última movimentação vem da API do CNJ.'},
-    {k:'clienteId',l:'Cliente',t:'ref',col:'clientes',lab:c=>c.nome},
+    {k:'clienteId',l:'Cliente',t:'ref',col:'clientes',lab:c=>c.nome,novo:'＋ Cadastrar cliente novo…'},
     {k:'area',l:'Área',t:'select',o:['Previdenciário','Criminal','Trabalhista','Outro'],half:1},
     {k:'responsavelId',l:'Responsável',t:'ref',col:'equipe',lab:m=>m.nome,half:1},
     {k:'tribunal',l:'Tribunal / órgão',t:'text',ph:'TRF1, TJPA, INSS…',half:1},{k:'vara',l:'Vara / juízo',t:'text',ph:'1ª Vara Federal / JEF…',half:1},
@@ -584,7 +584,7 @@ function fieldHtml(fd,val){
   const id='f_'+fd.k,cls='fld'+(fd.half?' half':'');let inp='';
   if(fd.t==='select'){const opt=o=>{const[v,l]=Array.isArray(o)?o:[o,o||'—'];return `<option value="${esc(v)}" ${String(val??'')===String(v)?'selected':''}>${esc(l)}</option>`;};
     inp=`<select class="input" id="${id}">${fd.o.map(o=>o&&o.g?`<optgroup label="${esc(o.g)}">${o.o.map(opt).join('')}</optgroup>`:opt(o)).join('')}</select>`;}
-  else if(fd.t==='ref'){const items=[...S[fd.col]].filter(x=>(fd.col!=='equipe'||x.ativo!==false||x.id===val)&&(!fd.filtro||fd.filtro(x)||x.id===val)).sort((a,b)=>String(fd.lab(a)).localeCompare(String(fd.lab(b)),'pt-BR'));inp=`<select class="input" id="${id}"><option value="">— Nenhum —</option>${items.map(x=>`<option value="${esc(x.id)}" ${val===x.id?'selected':''}>${esc(fd.lab(x))}</option>`).join('')}</select>`;}
+  else if(fd.t==='ref'){const items=[...S[fd.col]].filter(x=>(fd.col!=='equipe'||x.ativo!==false||x.id===val)&&(!fd.filtro||fd.filtro(x)||x.id===val)).sort((a,b)=>String(fd.lab(a)).localeCompare(String(fd.lab(b)),'pt-BR'));inp=`<select class="input" id="${id}"><option value="">— Nenhum —</option>${fd.novo?`<option value="__novo">${esc(fd.novo)}</option>`:''}${items.map(x=>`<option value="${esc(x.id)}" ${val===x.id?'selected':''}>${esc(fd.lab(x))}</option>`).join('')}</select>`;}
   else if(fd.t==='area')inp=`<textarea class="input" id="${id}">${esc(val)}</textarea>`;
   else if(fd.t==='check')return `<div class="${cls}" data-k="${fd.k}"><label class="chk" for="${id}"><input type="checkbox" id="${id}" ${val?'checked':''}>${esc(fd.l)}</label>${fd.hint?`<span class="hint">${esc(fd.hint)}</span>`:''}</div>`;
   else if(fd.t==='gov')return `<div class="${cls}" data-k="${fd.k}"><span class="lab">${esc(fd.l)}</span>${htmlGov('f_'+fd.k)}</div>`;
@@ -651,6 +651,7 @@ function openForm(col,id,preset,onSaved){
   const form=$('#shF');
   form.addEventListener('input',e=>{if(e.target.dataset.ck)return;refresh();});
   form.addEventListener('change',e=>{
+    if(e.target.value==='__novo'&&e.target.tagName==='SELECT'){novoClienteDoForm(e.target);return;}
     if(e.target.dataset.ck){const k=e.target.dataset.ck;SH.ck[k]={...(SH.ck[k]||{}),ok:e.target.checked};if(SH.refresh)SH.refresh();return;}
     if(col==='prazos'&&e.target.id==='f_processoId'){const pr=byId('processos',e.target.value);if(pr){if(pr.area==='Criminal'){$('#f_contagem').value='corridos';$('#f_reuPreso').checked=!!pr.reuPreso;}else if(pr.area==='Previdenciário'){$('#f_contagem').value='uteis';if(/TRF|Federal|JEF|INSS/i.test((pr.tribunal||'')+(pr.vara||'')))$('#f_justica').value='federal';}}}
     if(col==='clientes'&&e.target.id==='f_cep')buscaCEP(e.target.value);
@@ -683,7 +684,19 @@ async function buscaCEP(v){
     set('logradouro',j.logradouro);set('bairro',j.bairro);set('cidade',j.localidade);const uf=$('#f_uf');if(uf&&!uf.value&&j.uf)uf.value=j.uf;$('#f_numero')&&$('#f_numero').focus();
   }catch(e){}
 }
-function closeForm(){$('#sheet').hidden=true;$('#sheet').innerHTML='';SH=null;if(window.__pendente&&podeAtualizar()){window.__pendente=false;body_();}}
+/* cadastrar cliente novo sem perder o processo que está sendo preenchido */
+function novoClienteDoForm(sel){
+  const k=sel.id.replace(/^f_/,'');const v=collect(SH.F.f);v[k]=SH.id?(byId(SH.col,SH.id)||{})[k]||'':'';
+  const volta={col:SH.col,id:SH.id,onSaved:SH.onSaved,vals:{...v,checklist:SH.ck},k};
+  const reabrir=cid=>{
+    if(volta.id){openForm(volta.col,volta.id,null,volta.onSaved);const s=$('#f_'+k);if(s&&cid){s.value=cid;s.dispatchEvent(new Event('change',{bubbles:true}));}}
+    else openForm(volta.col,null,{...volta.vals,[k]:cid||volta.vals[k]||''},volta.onSaved);
+    if(cid)setTimeout(()=>toast('Cliente salvo e escolhido. Confira e salve o processo.'),200);
+  };
+  openForm('clientes',null,{},novo=>reabrir(novo));
+  if(SH)SH.aoCancelar=()=>reabrir('');
+}
+function closeForm(){const volta=SH&&!SH.salvou&&SH.aoCancelar;$('#sheet').hidden=true;$('#sheet').innerHTML='';SH=null;if(volta)setTimeout(volta,0);if(window.__pendente&&podeAtualizar()){window.__pendente=false;body_();}}
 async function doSave(){
   if(!SH)return;const{col,id,F}=SH;const v=collect(F.f);
   for(const fd of F.f){if(fd.req&&(v[fd.k]===''||v[fd.k]==null)&&(!fd.show||fd.show(v))){toast(`Preencha o campo “${fd.l}”.`);document.getElementById('f_'+fd.k)?.focus();return;}}
@@ -695,7 +708,7 @@ async function doSave(){
   const btn=$('#shS');btn.disabled=true;btn.textContent='Salvando…';
   const novo=await salvar(col,id,{...(old||{}),...v},SH.novoId);
   if(!novo){if(btn.isConnected){btn.disabled=false;btn.textContent='Salvar';}return;}
-  const cb=SH&&SH.onSaved;closeForm();toast('Salvo.');
+  const cb=SH&&SH.onSaved;if(SH)SH.salvou=true;closeForm();toast('Salvo.');
   if(cb)cb(novo,v);
 }
 function renderCalc(v){
