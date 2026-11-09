@@ -29,6 +29,13 @@ Deno.serve(async (req: Request) => {
   const { data: ok, error } = await sb.rpc("autorizado");
   if (error || ok !== true) return json({ erro: "sem_permissao" }, 403);
 
+  // filtros escolhidos na tela: OAB (vazio = todas) e período
+  let pedido: { oab?: string; dias?: number } = {};
+  try { pedido = await req.json(); } catch (_) { /* sem filtros */ }
+  const oab = String(pedido.oab || "").toUpperCase().replace(/[^A-Z0-9 ]/g, "").trim().slice(0, 12);
+  if (oab && !/^[A-Z]{2} ?\d{1,7}[A-Z]?$/.test(oab)) return json({ erro: "oab_invalida" }, 400);
+  const dias = [3, 30, 90, 365, 730].includes(Number(pedido.dias)) ? String(pedido.dias) : "3";
+
   // 2) pede ao GitHub para rodar o robô
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) return json({ erro: "sem_token" }, 500);
@@ -59,7 +66,7 @@ Deno.serve(async (req: Request) => {
   const r = await gh(`/actions/workflows/${WORKFLOW}/dispatches`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ref: "main", inputs: { busca: "true" } }),
+    body: JSON.stringify({ ref: "main", inputs: { busca: "true", oab, dias } }),
   });
   if (r.status === 204) return json({ ok: true });
   const detalhe = (await r.text()).slice(0, 300);

@@ -58,6 +58,13 @@ VAPID_PRIVATE = os.environ.get("VAPID_PRIVATE", "").strip()
 FORCAR_BACKUP = os.environ.get("FORCAR_BACKUP", "").strip() in ("1", "sim", "true")
 DATAJUD_KEY = os.environ.get("DATAJUD_KEY", "").strip() or "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
 DIAS_DJEN = int(os.environ.get("DIAS_DJEN", "3") or 3)
+# botão "Buscar agora": qual OAB (vazio = todas) e quantos dias para trás
+BUSCA_OAB = os.environ.get("BUSCA_OAB", "").strip().upper()
+try:
+    BUSCA_DIAS = max(1, min(int(os.environ.get("BUSCA_DIAS", "") or 0), 800))
+except ValueError:
+    BUSCA_DIAS = 0
+DIAS_RECENTE = 7  # comunicações mais antigas que isso entram como "antiga", sem encher a lista de novas
 UA = "Mozilla/5.0 (compatible; robo-escritorio/1.0)"
 # o Supabase recusa a chave secreta quando o pedido parece vir de um navegador ("Mozilla")
 UA_SB = "robo-escritorio/1.0 (python-urllib)"
@@ -503,11 +510,25 @@ def entregar(membro, assunto, texto):
 
 
 # ---------------------------------------------------------------- tarefas do robô
+def janelas(dias):
+    """Divide o período em blocos de 30 dias (o DJEN responde melhor a períodos curtos)."""
+    out, d = [], HOJE - timedelta(days=dias)
+    while d <= HOJE:
+        f = min(d + timedelta(days=29), HOJE)
+        out.append((d.isoformat(), f.isoformat()))
+        d = f + timedelta(days=1)
+    return out
+
+
 def buscar_intimacoes(equipe, clientes, processos, avisos):
-    ini = (HOJE - timedelta(days=DIAS_DJEN)).isoformat()
+    dias = BUSCA_DIAS if (MODO == "busca" and BUSCA_DIAS) else DIAS_DJEN
+    ini = (HOJE - timedelta(days=dias)).isoformat()
     fim = HOJE.isoformat()
+    periodos = janelas(dias)
     achadas = {}  # hash -> registro
     falhas = sucesso = 0
+    STATUS["periodo_dias"] = dias
+    STATUS["oab"] = BUSCA_OAB if MODO == "busca" else ""
 
     def guardar(itens, origem, oab=None, resp_id=None, cli_id=None):
         for it in itens:
@@ -517,15 +538,23 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
             n.update({"origem": origem, "oab": oab, "responsavel_id": resp_id, "cliente_id": cli_id})
             achadas[n["hash"]] = n
 
+    alvo = parse_oab(BUSCA_OAB) if (MODO == "busca" and BUSCA_OAB) else None
     for m in equipe:
         uf, num = parse_oab(m.get("oab"))
         if not uf:
             continue
+        if alvo and (uf, str(int(num))) != (alvo[0], str(int(alvo[1]))):
+            continue
         rotulo = f"{uf} {num}"
         try:
-            itens = djen({"numeroOab": str(int(num)), "ufOab": uf, "dataDisponibilizacaoInicio": ini, "dataDisponibilizacaoFim": fim})
-            if not itens and num != str(int(num)):
-                itens = djen({"numeroOab": num, "ufOab": uf, "dataDisponibilizacaoInicio": ini, "dataDisponibilizacaoFim": fim})
+            itens = []
+            for a, b in periodos:
+                lote = djen({"numeroOab": str(int(num)), "ufOab": uf, "dataDisponibilizacaoInicio": a, "dataDisponibilizacaoFim": b})
+                if not lote and num != str(int(num)):
+                    lote = djen({"numeroOab": num, "ufOab": uf, "dataDisponibilizacaoInicio": a, "dataDisponibilizacaoFim": b})
+                itens += lote
+                if len(periodos) > 1:
+                    time.sleep(0.5)
             log(f"DJEN OAB {rotulo} ({m.get('nome')}): {len(itens)} comunicação(ões) de {br(ini)} a {br(fim)}")
             guardar(itens, "oab", rotulo, m["id"])
             sucesso += 1
@@ -534,7 +563,7 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
             log(f"DJEN OAB {rotulo}: ERRO {e}")
         time.sleep(1)
 
-    for c in clientes:
+    for c in ([] if alvo else clientes):
         if not c.get("monitorar") or not c.get("nome"):
             continue
         pr = next((p for p in processos if p.get("clienteId") == c["id"] and p.get("responsavelId")), None)
@@ -568,20 +597,29 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
         log("Nenhuma intimação nova.")
         return 0
     por_num = {digitos(p.get("numero")): p for p in processos if digitos(p.get("numero"))}
+    corte = (HOJE - timedelta(days=DIAS_RECENTE)).isoformat()
     for n in novas:
         n20 = digitos(n["numero"])
         pr = por_num.get(n20)
         if pr and not n.get("responsavel_id"):
             n["responsavel_id"] = pr.get("responsavelId")
+        n["status"] = "antiga" if (n.get("data_disponibilizacao") or fim) < corte else "nova"
+        if n["status"] == "antiga":
+            continue  # antigas não pedem a última movimentação (seriam centenas de consultas)
         mv = ultima_mov(n20) if len(n20) == 20 else None
         if mv:
             n["ultima_mov"] = mv["nome"]
             n["ultima_mov_data"] = mv["_dt"].isoformat()
     campos = ["hash", "djen_id", "origem", "oab", "cliente_id", "responsavel_id", "numero", "tribunal", "orgao", "classe", "tipo",
-              "tipo_documento", "data_disponibilizacao", "texto", "link", "partes", "ultima_mov", "ultima_mov_data", "bruto"]
+              "tipo_documento", "data_disponibilizacao", "texto", "link", "partes", "ultima_mov", "ultima_mov_data", "bruto", "status"]
     linhas = [{k: n.get(k) for k in campos} for n in novas]  # o Supabase exige as mesmas colunas em todas
     for i in range(0, len(linhas), 50):
         sb("POST", "intimacoes", linhas[i:i + 50], params={"on_conflict": "hash"}, prefer="resolution=ignore-duplicates,return=minimal")
+    antigas = sum(1 for n in novas if n["status"] == "antiga")
+    STATUS["antigas"] = antigas
+    novas = [n for n in novas if n["status"] == "nova"]
+    if antigas:
+        log(f"{antigas} comunicação(ões) com mais de {DIAS_RECENTE} dias guardada(s) como antigas (aba Processos da OAB).")
     for n in novas:
         ja = " (processo já cadastrado)" if digitos(n["numero"]) in por_num else ""
         txt = (f"• {n['tribunal']} {n['numero']}{ja}\n  {n['orgao']}\n  Disponibilizada em {br(n['data_disponibilizacao']) if n['data_disponibilizacao'] else '?'}"

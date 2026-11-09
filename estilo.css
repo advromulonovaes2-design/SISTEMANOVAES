@@ -254,3 +254,7 @@ body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],bo
 .tools .busca .hint{max-width:420px;text-align:right}
 .tools .busca .hint.warn{color:var(--warn,#A64B00)}
 @media (max-width:620px){.tools .busca{margin-left:0;width:100%;justify-content:flex-start}.tools .busca .hint{text-align:left}.tools .busca .btn{width:100%}}
+.tools .busca .busca-sel{display:flex;gap:8px;flex-wrap:wrap}
+.tools .busca .busca-sel .input{width:auto;min-width:150px}
+.tools .busca #buscaSt{flex-basis:100%;text-align:right}
+@media (max-width:620px){.tools .busca .busca-sel{width:100%}.tools .busca .busca-sel .input{flex:1;min-width:0}.tools .busca #buscaSt{text-align:left}}

@@ -15,6 +15,14 @@ on:
         description: 'Só buscar intimações (botão "Buscar agora" do sistema, sem mandar avisos)'
         type: boolean
         default: false
+      oab:
+        description: 'OAB a buscar, ex.: PA 19690 (vazio = todas da equipe)'
+        type: string
+        default: ''
+      dias:
+        description: 'Quantos dias para trás (vazio = 3)'
+        type: string
+        default: ''
 
 concurrency:
   group: robo
@@ -47,3 +55,5 @@ jobs:
           DATAJUD_KEY: ${{ secrets.DATAJUD_KEY }}
           VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
           FORCAR_BACKUP: ${{ inputs.backup && '1' || '' }}
+          BUSCA_OAB: ${{ inputs.oab }}
+          BUSCA_DIAS: ${{ inputs.dias }}

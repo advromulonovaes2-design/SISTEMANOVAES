@@ -47,8 +47,13 @@ const limpa=rec=>{const o={...rec};delete o.id;delete o.criadoEm;delete o.atuali
 
 async function carregar(t){const{data,error}=await sb.from(t).select('*');if(error){if(TABS_NOVAS.includes(t)&&/does not exist|42P01|PGRST205|schema cache/i.test((error.message||'')+' '+(error.code||''))){S[t]=[];S.faltaTabela=true;return;}throw error;}S[t]=data.map(rowToRec);}
 async function carregarIntimacoes(){
-  const{data,error}=await sb.from('intimacoes').select('hash,origem,oab,cliente_id,responsavel_id,numero,tribunal,orgao,classe,tipo,tipo_documento,data_disponibilizacao,texto,link,partes,ultima_mov,ultima_mov_data,status,processo_id,criado_em').order('data_disponibilizacao',{ascending:false}).limit(400);
-  if(error)throw error;S.intimacoes=data||[];
+  const cols='hash,origem,oab,cliente_id,responsavel_id,numero,tribunal,orgao,classe,tipo,tipo_documento,data_disponibilizacao,texto,link,partes,ultima_mov,ultima_mov_data,status,processo_id,criado_em';
+  let out=[];
+  for(let ini=0;ini<5000;ini+=1000){ // o Supabase entrega no máximo 1000 por vez
+    const{data,error}=await sb.from('intimacoes').select(cols).order('data_disponibilizacao',{ascending:false}).order('hash').range(ini,ini+999);
+    if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;
+  }
+  S.intimacoes=out;
 }
 async function carregarTudo(){
   try{
@@ -338,7 +343,7 @@ function rowIntimacao(it){
   const link=/^https?:\/\//.test(it.link||'')?it.link:'';
   return `<div class="row a-${areaCls(area)} ${st==='nova'?'':'soft'}">
     <div class="main">
-      <div class="chips"><span class="chip ${st==='nova'?'c-warn':st==='cadastrada'?'c-ok':'c-mute'}">${st==='nova'?'Nova':st==='cadastrada'?'Cadastrada':'Ignorada'}</span>${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${it.tipo_documento||it.tipo?`<span class="chip c-mute">${esc(it.tipo_documento||it.tipo)}</span>`:''}${area!=='Outro'?areaChip(area):''}</div>
+      <div class="chips"><span class="chip ${st==='nova'?'c-warn':st==='cadastrada'?'c-ok':'c-mute'}">${st==='nova'?'Nova':st==='cadastrada'?'Cadastrada':st==='antiga'?'Antiga':'Ignorada'}</span>${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${it.tipo_documento||it.tipo?`<span class="chip c-mute">${esc(it.tipo_documento||it.tipo)}</span>`:''}${area!=='Outro'?areaChip(area):''}</div>
       <div class="t mono">${esc(it.numero||'Sem número')}</div>
       <div class="m">Disponibilizada em ${fmtDS(it.data_disponibilizacao)}${it.orgao?' · '+esc(it.orgao):''}</div>
       ${it.classe?`<div class="m">${esc(it.classe)}</div>`:''}
@@ -389,11 +394,12 @@ VIEWS.inicio={t:'Início',
   }};
 
 VIEWS.intimacoes={t:'Intimações',
-  tools(){return `<div class="sub">O robô consulta o DJEN pelas OABs da equipe e pelos clientes monitorados, de segunda a sexta às 7h e às 16h.</div><div class="tools"><div class="seg" id="segInt"><button data-f="nova" type="button">Novas</button><button data-f="cadastrada" type="button">Cadastradas</button><button data-f="ignorada" type="button">Ignoradas</button><button data-f="todas" type="button">Todas</button></div></div>`;},
+  tools(){return `<div class="sub">O robô consulta o DJEN pelas OABs da equipe e pelos clientes monitorados, de segunda a sexta às 7h e às 16h.</div><div class="tools"><div class="seg" id="segInt"><button data-f="nova" type="button">Novas</button><button data-f="cadastrada" type="button">Cadastradas</button><button data-f="ignorada" type="button">Ignoradas</button><button data-f="todas" type="button">Todas</button><button data-f="processos" type="button">Processos da OAB</button></div></div>`;},
   bind(){$('#segInt').onclick=e=>{const b=e.target.closest('button');if(b){UI.intF=b.dataset.f;body_();}};},
   body(){
     document.querySelectorAll('#segInt button').forEach(x=>x.classList.toggle('on',x.dataset.f===UI.intF));
-    const l=S.intimacoes.filter(i=>UI.intF==='todas'||(i.status||'nova')===UI.intF);
+    if(UI.intF==='processos'&&typeof processosDaOab==='function')return processosDaOab();
+    const l=S.intimacoes.filter(i=>UI.intF==='todas'||(i.status||'nova')===UI.intF).slice(0,400);
     if(l.length)return `<div class="list">${l.map(rowIntimacao).join('')}</div>`;
     if(!S.intimacoes.length)return vazio('Nenhuma intimação ainda','Cadastre as OABs na aba Equipe. Depois que o robô rodar, as intimações aparecem aqui para você cadastrar com um toque.');
     return vazio('Nada neste filtro','Troque o filtro acima para ver as outras.');
