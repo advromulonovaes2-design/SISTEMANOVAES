@@ -217,6 +217,8 @@ begin
     execute format('create trigger historico after insert or update or delete on public.%I for each row execute function public.registrar_historico()', t);
   end loop;
 end $$;
+-- a função do histórico só roda pelos gatilhos, nunca chamada direto
+revoke execute on function public.registrar_historico() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- Segurança: ninguém lê nem grava sem estar logado E autorizado
