@@ -160,7 +160,7 @@ Para ligar o botão (uma vez só), o GitHub precisa de um token que só sabe rod
 5. **Generate token** e copie (começa com `github_pat_`). Ele só aparece uma vez.
 6. No Supabase: **Edge Functions** → **Secrets** → **Add new secret**. Nome `GITHUB_TOKEN`, valor: o token. **Save**.
 
-A função `buscar-intimacoes` já está instalada no Supabase (o código fica em `supabase/functions`). Ela confere se quem apertou está liberado no sistema antes de chamar o robô. Quando o token vencer, o botão avisa; é só gerar outro e trocar o secret.
+As funções `buscar-intimacoes` e `djen` já estão instaladas no Supabase (o código fica em `supabase/functions`). Ela confere se quem apertou está liberado no sistema antes de chamar o robô. Quando o token vencer, o botão avisa; é só gerar outro e trocar o secret.
 
 ---
 
@@ -293,7 +293,7 @@ No cadastro do cliente, em **Checklist de documentos**, escolha **Qual caso voc�
 
 ## Se algo der errado
 
-- **O robô mostra erro 403 ou "Sem conexão" no DJEN**: o DJEN pode bloquear servidores fora do Brasil (o GitHub roda nos EUA). Plano B: rodar o robô no seu computador. Instale o Python (python.org, marque "Add to PATH"), copie `robo/robo.py` e `robo/rodar-no-windows.exemplo.bat` para uma pasta sua, preencha o `.bat` e agende no **Agendador de Tarefas** do Windows para 7h e 16h. Não suba o `.bat` preenchido para o GitHub.
+- **O robô mostra erro 403 no DJEN**: o DJEN recusa servidores fora do Brasil, e o GitHub roda nos EUA. Por isso o robô consulta o DJEN pela função `djen` do Supabase, que roda em São Paulo (o relatório mostra "consultando pela ponte do Supabase em São Paulo"). Se a ponte falhar, confira se a função `djen` aparece em Supabase › Edge Functions. Plano B: rodar o robô num computador no Brasil (Python instalado, `robo/robo.py` e `robo/rodar-no-windows.exemplo.bat` preenchido, com `set DJEN_DIRETO=1`, agendado no Agendador de Tarefas do Windows). Não suba o `.bat` preenchido para o GitHub.
 - **Última movimentação não aparece**: a DataJud do CNJ atualiza com alguns dias de atraso e não cobre todos os tribunais. Se o relatório mostrar erro 401, a chave pública do CNJ mudou. Pegue a nova em datajud-wiki.cnj.jus.br e crie o Secret `DATAJUD_KEY`.
 - **"E-mail ainda não foi liberado"**: um gestor precisa liberar o e-mail na aba **Acessos**.
 - **O GitHub parou de rodar o robô**: em repositórios públicos, o GitHub pausa agendamentos após 60 dias sem alterações e manda um e-mail. É só entrar em Actions e reativar.

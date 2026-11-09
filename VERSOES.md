@@ -23,6 +23,8 @@ A versão em uso aparece em **Ajustes → Sobre**.
 - Sistema publicado direto na raiz do repositório.
 - Botão **Sair** no topo, com o nome e o papel de quem está logado.
 - Botão **Buscar agora** na aba Intimações (função `buscar-intimacoes` no Supabase + secret `GITHUB_TOKEN`), com o horário e o resultado da última busca. O robô ganhou o modo "busca", que só procura intimações e não manda avisos.
+- O robô consulta o DJEN pela função `djen` do Supabase, rodando em São Paulo: o DJEN recusa os servidores do GitHub (EUA). Testado: a OAB PA 42826 trouxe a primeira intimação.
+- O robô se identifica ao Supabase de um jeito que a chave secreta é aceita (antes era recusada como se viesse de um navegador).
 
 ## Versão 3 · 05/11/2026
 
