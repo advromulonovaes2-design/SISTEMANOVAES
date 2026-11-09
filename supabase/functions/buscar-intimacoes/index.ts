@@ -46,6 +46,7 @@ Deno.serve(async (req: Request) => {
 
   const runs = await gh(`/actions/workflows/${WORKFLOW}/runs?per_page=5`);
   if (runs.status === 401 || runs.status === 403 || runs.status === 404) {
+    console.error(`GitHub recusou o token ao listar execuções: HTTP ${runs.status}`);
     return json({ erro: "token_invalido", status: runs.status }, 500);
   }
   if (runs.ok) {
@@ -58,8 +59,11 @@ Deno.serve(async (req: Request) => {
   const r = await gh(`/actions/workflows/${WORKFLOW}/dispatches`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ref: "main", inputs: { busca: true } }),
+    body: JSON.stringify({ ref: "main", inputs: { busca: "true" } }),
   });
   if (r.status === 204) return json({ ok: true });
-  return json({ erro: "github", status: r.status, detalhe: (await r.text()).slice(0, 300) }, 502);
+  const detalhe = (await r.text()).slice(0, 300);
+  console.error(`GitHub recusou o pedido: HTTP ${r.status} ${detalhe}`);
+  const motivo = r.status === 403 ? "sem_permissao_actions" : r.status === 422 ? "workflow" : "github";
+  return json({ erro: motivo, status: r.status, detalhe }, 502);
 });

@@ -55,9 +55,11 @@ async function buscarAgora(){
   BUSCA.erro=true;
   const e=res&&res.erro;
   BUSCA.msg=e==='sem_token'||e==='token_invalido'?'O botão ainda não está ligado ao GitHub: falta o token (veja o passo a passo, "Botão Buscar agora").'
+    :e==='sem_permissao_actions'?'O token do GitHub não tem permissão para rodar o robô: em Permissions › Actions, escolha "Read and write" e gere de novo.'
+    :e==='workflow'?'O GitHub não aceitou o pedido do robô (arquivo robo.yml). Avise o suporte do sistema.'
     :e==='sem_permissao'?'Seu login não tem permissão para buscar.'
     :e==='rede'&&!status?'Não foi possível pedir a busca (sem internet ou a função não está instalada).'
-    :'O GitHub recusou o pedido agora. Tente de novo em alguns minutos.';
+    :`O GitHub recusou o pedido agora${res&&res.status?' (código '+res.status+')':''}. Tente de novo em alguns minutos.`;
   pintarBusca();
 }
 const TOOLS_INT=VIEWS.intimacoes.tools,BIND_INT=VIEWS.intimacoes.bind;
