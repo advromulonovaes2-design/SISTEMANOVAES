@@ -9,6 +9,19 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.1 · 09/11/2026
+
+**Banco** (já aplicado no Supabase do escritório; em outra instalação, rodar `banco/2-atualizacao.sql`)
+- Papéis **gestor** e **equipe** na tabela `acesso`, com regras no próprio banco: financeiro, acessos, histórico, ajustes, cadastro da equipe e exclusões só para gestores.
+- Ninguém tira o próprio acesso de gestor.
+
+**Sistema**
+- Aba **Acessos** (só gestores): liberar e-mails como gestor ou equipe, mudar o papel, tirar acesso, ver último acesso e duas etapas, liberar quem criou conta.
+- Quem é da equipe vê **Minha conta** em vez de Ajustes e pode mudar só os próprios canais de aviso.
+- **Sair da conta** desconecta só o aparelho em uso.
+- Saiu o campo "Pode entrar no sistema" do cadastro da Equipe (o acesso agora fica na aba Acessos).
+- Sistema publicado direto na raiz do repositório.
+
 ## Versão 3 · 05/11/2026
 
 **Banco** (rodar `banco/2-atualizacao.sql`)

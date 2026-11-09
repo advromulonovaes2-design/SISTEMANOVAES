@@ -245,6 +245,125 @@ revoke all on public.historico from anon, authenticated;
 grant select, insert on public.historico to authenticated;
 
 -- ---------------------------------------------------------------------
+-- Gestores e equipe
+--   Gestores: tudo, inclusive Ajustes, Equipe, Acessos, Financeiro,
+--             Relatórios, Histórico e excluir registros.
+--   Equipe:   trabalha em clientes, processos, prazos, tarefas, júri,
+--             documentos e agenda; não vê financeiro nem histórico e
+--             não exclui (só cartões de tarefa).
+-- ---------------------------------------------------------------------
+alter table public.acesso add column if not exists gestor boolean not null default false;
+alter table public.acesso add column if not exists liberado_por text;
+
+-- se ninguém é gestor ainda (instalação antiga), o primeiro e-mail liberado vira gestor
+update public.acesso set gestor = true
+where not exists (select 1 from public.acesso where gestor)
+  and email = (select email from public.acesso order by criado_em, email limit 1);
+
+create or replace function public.eh_gestor()
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select public.autorizado()
+     and exists (select 1 from public.acesso where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) and gestor);
+$$;
+revoke all on function public.eh_gestor() from public, anon;
+grant execute on function public.eh_gestor() to authenticated;
+
+create or replace function public.meu_papel()
+returns text
+language sql stable security definer
+set search_path = public
+as $$
+  select case when public.eh_gestor() then 'gestor' when public.autorizado() then 'equipe' else 'nenhum' end;
+$$;
+revoke all on function public.meu_papel() from public, anon;
+grant execute on function public.meu_papel() to authenticated;
+
+-- lista para a aba Acessos (só gestores recebem linhas): quem está liberado
+-- e quem já criou conta mas ainda não foi liberado
+create or replace function public.acessos_info()
+returns table (email text, gestor boolean, liberado boolean, conta boolean, confirmado boolean,
+               ultimo_acesso timestamptz, duas_etapas boolean, desde timestamptz, liberado_por text)
+language sql stable security definer
+set search_path = public
+as $$
+  select lower(coalesce(a.email, u.email::text)), coalesce(a.gestor, false), a.email is not null, u.id is not null,
+         u.email_confirmed_at is not null, u.last_sign_in_at,
+         exists (select 1 from auth.mfa_factors f where f.user_id = u.id and f.status = 'verified'),
+         coalesce(a.criado_em, u.created_at), a.liberado_por
+  from public.acesso a
+  full join auth.users u on lower(u.email::text) = lower(a.email)
+  where public.eh_gestor()
+  order by 3 desc, 2 desc, 1;
+$$;
+revoke all on function public.acessos_info() from public, anon;
+grant execute on function public.acessos_info() to authenticated;
+
+-- e-mail sempre minúsculo; ninguém tira o próprio acesso de gestor (evita ficar sem gestor)
+create or replace function public.acesso_protege()
+returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+declare eu text := lower(coalesce(auth.jwt() ->> 'email', ''));
+begin
+  if tg_op in ('UPDATE', 'DELETE') and eu <> '' and lower(old.email) = eu and old.gestor
+     and (tg_op = 'DELETE' or not new.gestor or lower(new.email) <> eu) then
+    raise exception 'Você não pode tirar o seu próprio acesso de gestor. Peça ao outro gestor.';
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  new.email := lower(trim(new.email));
+  if tg_op = 'INSERT' and eu <> '' then new.liberado_por := eu; end if;
+  return new;
+end $$;
+revoke execute on function public.acesso_protege() from public, anon, authenticated;
+drop trigger if exists protege on public.acesso;
+create trigger protege before insert or update or delete on public.acesso for each row execute function public.acesso_protege();
+
+do $$
+declare t text;
+begin
+  -- equipe lê, cria e altera; só gestores excluem
+  foreach t in array array['clientes','processos','prazos','documentos','eventos','juri','modelos','intimacoes','movimentacoes','envios','envios_arquivos'] loop
+    execute format('drop policy if exists escritorio on public.%I', t);
+    execute format('drop policy if exists ler on public.%I', t);
+    execute format('drop policy if exists criar on public.%I', t);
+    execute format('drop policy if exists alterar on public.%I', t);
+    execute format('drop policy if exists excluir on public.%I', t);
+    execute format('create policy ler on public.%I for select to authenticated using (public.autorizado())', t);
+    execute format('create policy criar on public.%I for insert to authenticated with check (public.autorizado())', t);
+    execute format('create policy alterar on public.%I for update to authenticated using (public.autorizado()) with check (public.autorizado())', t);
+    execute format('create policy excluir on public.%I for delete to authenticated using (public.eh_gestor())', t);
+  end loop;
+  -- só gestores: financeiro e lista de acessos
+  foreach t in array array['honorarios','acesso'] loop
+    execute format('drop policy if exists escritorio on public.%I', t);
+    execute format('drop policy if exists gestores on public.%I', t);
+    execute format('create policy gestores on public.%I for all to authenticated using (public.eh_gestor()) with check (public.eh_gestor())', t);
+  end loop;
+  -- todos leem; só gestores gravam: ajustes do escritório e equipe
+  foreach t in array array['config','equipe'] loop
+    execute format('drop policy if exists escritorio on public.%I', t);
+    execute format('drop policy if exists ler on public.%I', t);
+    execute format('drop policy if exists gestores on public.%I', t);
+    execute format('create policy ler on public.%I for select to authenticated using (public.autorizado())', t);
+    execute format('create policy gestores on public.%I for all to authenticated using (public.eh_gestor()) with check (public.eh_gestor())', t);
+  end loop;
+end $$;
+
+-- cada pessoa pode atualizar o próprio cadastro na equipe (Telegram, WhatsApp...), sem trocar o e-mail
+drop policy if exists proprio on public.equipe;
+create policy proprio on public.equipe for update to authenticated
+  using (public.autorizado() and lower(dados ->> 'email') = lower(coalesce(auth.jwt() ->> 'email', '')))
+  with check (public.autorizado() and lower(dados ->> 'email') = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+-- histórico: só gestores leem; a equipe continua registrando quando vê senha gov.br
+drop policy if exists ler on public.historico;
+create policy ler on public.historico for select to authenticated using (public.eh_gestor());
+
+-- ---------------------------------------------------------------------
 -- Envio de documentos pelo cliente (página pública com link)
 -- ---------------------------------------------------------------------
 create or replace function public.token_envio_valido(p text)

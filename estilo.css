@@ -241,3 +241,9 @@ main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px
 .tbl th{font-weight:600;color:var(--muted);font-size:12px}
 .tbl td:not(:first-child),.tbl th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
 @media print{header,nav,#nav,.tools,.vhead .sub,#sheet,.toast{display:none!important}body{background:#fff}.rcard,.kpi{break-inside:avoid;border-color:#ccc}}
+
+/* login de equipe: esconde o que é só dos gestores */
+body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],body.equipe #nav [data-v="historico"],body.equipe #nav [data-v="acessos"],body.equipe .so-gestor,body.equipe [data-new="equipe"],body.equipe [data-new="honorarios"]{display:none!important}
+.papel{display:inline-flex;align-items:center;gap:4px}
+.acc-form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;width:100%}
+@media (max-width:620px){.acc-form{grid-template-columns:1fr 1fr}.acc-form .input:first-child{grid-column:1/-1}}

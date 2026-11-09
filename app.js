@@ -31,7 +31,9 @@ function copiar(txt){
 }
 
 /* ---------- dados ---------- */
-const VERSAO='3 · 05/11/2026';
+const VERSAO='3.1 · 09/11/2026';
+let PAPEL='equipe';const ehGestor=()=>PAPEL==='gestor';
+const SO_GESTOR=['financeiro','relatorios','historico','acessos'];
 const TABS=['equipe','clientes','processos','prazos','tarefas','honorarios','documentos','eventos','juri','modelos'];
 const TABS_NOVAS=['eventos','juri','modelos'];
 const S={equipe:[],clientes:[],processos:[],prazos:[],tarefas:[],honorarios:[],documentos:[],eventos:[],juri:[],config:{},intimacoes:[],movs:{}};
@@ -71,7 +73,7 @@ function setSync(){
 function applyConfig(){setFeriadosLocais(S.config.feriados||'');if(typeof setSuspensoes==='function')setSuspensoes(S.config.suspensoes||[]);$('#officeName').textContent=S.config.nome||NOME_PADRAO;document.title=S.config.nome||NOME_PADRAO;}
 function erroGravar(e){
   console.error(e);const m=String(e&&(e.message||e.error_description||e)||'');
-  if(/row-level|permission|42501|policy/i.test(m+(e&&e.code)))toast('Seu e-mail não tem permissão para gravar. Peça liberação ao administrador.');
+  if(/row-level|permission|42501|policy/i.test(m+(e&&e.code)))toast(ehGestor()?'Seu e-mail não tem permissão para gravar. Confira a aba Acessos.':'Isso só os gestores podem fazer. Peça a um deles.');
   else if(/Failed to fetch|NetworkError/i.test(m))toast('Sem internet. Nada foi salvo; tente de novo.');
   else toast('Não foi possível salvar: '+m.slice(0,120));
 }
@@ -84,7 +86,7 @@ async function salvar(col,id,data,novoId){
   }catch(e){erroGravar(e);return null;}
 }
 async function atualizar(col,id,patch){const r=byId(col,id);if(!r)return false;return !!(await salvar(col,id,{...r,...patch}));}
-async function excluir(col,id){try{const{error}=await sb.from(col).delete().eq('id',id);if(error)throw error;await carregar(col);body_();return true;}catch(e){erroGravar(e);return false;}}
+async function excluir(col,id){if(!ehGestor()&&col!=='tarefas'){toast('Só os gestores podem excluir. Peça a um deles.');return false;}try{const{error}=await sb.from(col).delete().eq('id',id);if(error)throw error;await carregar(col);body_();return true;}catch(e){erroGravar(e);return false;}}
 async function salvarConfig(cfg){try{const{error}=await sb.from('config').upsert({id:'geral',dados:cfg});if(error)throw error;S.config=cfg;applyConfig();body_();return true;}catch(e){erroGravar(e);return false;}}
 async function mudarIntimacao(hash,patch){try{const{error}=await sb.from('intimacoes').update(patch).eq('hash',hash);if(error)throw error;const it=S.intimacoes.find(x=>x.hash===hash);if(it)Object.assign(it,patch);body_();return true;}catch(e){erroGravar(e);return false;}}
 
@@ -125,7 +127,7 @@ function showLogin(msg,ok){
   $('#lgSenha').onkeydown=e=>{if(e.key==='Enter')$('#lgEntrar').click();};
   $('#lgCriar').onclick=async()=>{if(!em()||se().length<8)return showLogin('Para criar a senha, digite seu e-mail e uma senha com pelo menos 8 caracteres e toque de novo em "Primeiro acesso".');const{error}=await sb.auth.signUp({email:em(),password:se(),options:{emailRedirectTo:location.origin+location.pathname}});if(error)return showLogin('Não foi possível criar: '+error.message);showLogin('Pronto! Abra o e-mail que enviamos e toque no link de confirmação. Depois volte aqui e entre.',true);};
   $('#lgEsqueci').onclick=async()=>{if(!em())return showLogin('Digite seu e-mail e toque de novo em "Esqueci a senha".');const{error}=await sb.auth.resetPasswordForEmail(em(),{redirectTo:location.origin+location.pathname});if(error)return showLogin('Não foi possível enviar: '+error.message);showLogin('Enviamos um link para criar uma nova senha. Confira seu e-mail.',true);};
-  const s=$('#lgSair');if(s)s.onclick=()=>sb.auth.signOut();
+  const s=$('#lgSair');if(s)s.onclick=sairDaConta;
 }
 function showNovaSenha(){
   $('#app').hidden=true;const L=$('#login');L.hidden=false;
@@ -143,9 +145,11 @@ async function entrar(session){
     let estado='ok';
     const r=await sb.rpc('estado_acesso');
     if(r.error){const{data:ok,error}=await sb.rpc('autorizado');estado=(!error&&ok)?'ok':'sem_permissao';}else estado=r.data;
-    if(estado==='sem_permissao'){showLogin(`O e-mail ${me.email} ainda não foi liberado. Peça ao administrador para marcar "Pode entrar no sistema" no seu cadastro da Equipe.`);return;}
+    if(estado==='sem_permissao'){showLogin(`O e-mail ${me.email} ainda não foi liberado. Peça a um gestor do escritório para liberar na aba Acessos.`);return;}
     if(estado==='codigo'){showCodigoMFA();return;}
     if(estado==='cadastrar_mfa'){showCadastroMFA();return;}
+    try{const p=await sb.rpc('meu_papel');PAPEL=p.error?'gestor':(p.data==='gestor'?'gestor':'equipe');}catch(_){PAPEL='gestor';}
+    document.body.classList.toggle('equipe',!ehGestor());document.querySelectorAll('header [data-cfg]').forEach(b=>b.textContent=ehGestor()?'Ajustes':'Minha conta');
     $('#login').hidden=true;$('#app').hidden=false;
     go(location.hash.slice(1));
     await carregarTudo();
@@ -317,7 +321,7 @@ function rowEquipe(m){
     <div class="main">
       <div class="t">${esc(m.nome||'Sem nome')}${m.ativo===false?' <span class="chip c-mute">Inativo</span>':''}</div>
       <div class="m">${esc(m.funcao||'Função não informada')}${m.oab?' · OAB <span class="mono">'+esc(m.oab)+'</span>':''}</div>
-      <div class="chips"><span class="chip ${pz?'c-warn':'c-mute'}">${pz} ${pz===1?'prazo':'prazos'}</span><span class="chip c-mute">${tf} ${tf===1?'tarefa':'tarefas'}</span>${canais.length?`<span class="chip c-ok">Avisos: ${canais.join(', ')}</span>`:'<span class="chip c-warn">Sem canal de aviso</span>'}${m.acesso?'<span class="chip c-mute">Acessa o sistema</span>':''}</div>
+      <div class="chips"><span class="chip ${pz?'c-warn':'c-mute'}">${pz} ${pz===1?'prazo':'prazos'}</span><span class="chip c-mute">${tf} ${tf===1?'tarefa':'tarefas'}</span>${canais.length?`<span class="chip c-ok">Avisos: ${canais.join(', ')}</span>`:'<span class="chip c-warn">Sem canal de aviso</span>'}${typeof chipAcesso==='function'?chipAcesso(m):''}</div>
     </div>
   </div>`;
 }
@@ -370,7 +374,7 @@ VIEWS.inicio={t:'Início',
       <a class="stat" href="#prazos"><span>Próx. 7 dias</span><b>${sem}</b></a>
       <a class="stat ${novas?'warn':''}" href="#intimacoes"><span>Intimações novas</span><b>${novas}</b></a>
       <a class="stat ${presos?'alert':''}" href="#processos"><span>Réus presos</span><b>${presos}</b></a>
-      <a class="stat ${atras.length?'alert':''}" href="#financeiro"><span>Parcelas atrasadas</span><b>${atras.length}</b></a>
+      <a class="stat so-gestor ${atras.length?'alert':''}" href="#financeiro"><span>Parcelas atrasadas</span><b>${atras.length}</b></a>
     </div>
     ${vazioTudo?`<div class="sec"><h2>Primeiros passos</h2><div class="list">
       <button class="row click" data-cfg type="button"><div class="main"><div class="t">1. Preencha os Ajustes</div><div class="m">Nome do escritório, endereço, logo e feriados locais.</div></div></button>
@@ -455,7 +459,7 @@ VIEWS.equipe={t:'Equipe',
   }};
 
 function go(v){
-  if(!VIEWS[v])v='inicio';cur=v;
+  if(!VIEWS[v]||(!ehGestor()&&SO_GESTOR.includes(v)))v='inicio';cur=v;
   document.querySelectorAll('#nav [data-v]').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
   const mais=$('#navMais');if(mais)mais.classList.toggle('on',!['inicio','prazos','intimacoes','clientes'].includes(v));
   const V=VIEWS[v];
@@ -494,9 +498,9 @@ const FORMS={
     {k:'email',l:'E-mail',t:'email',half:1},{k:'telefone',l:'WhatsApp (com DDD)',t:'tel',ph:'91 98888-7777',half:1},
     {k:'telegram',l:'Telegram: ID do chat',t:'text',half:1,mono:1,hint:'Toque em Iniciar no bot do escritório e peça o ID ao @userinfobot.'},
     {k:'callmebot',l:'WhatsApp: chave CallMeBot',t:'text',half:1,mono:1,hint:'Opcional e não oficial. Veja o passo a passo.'},
-    {g:'Acesso'},
-    {k:'acesso',l:'Pode entrar no sistema com este e-mail',t:'check'},
-    {k:'ativo',l:'Ativo no escritório',t:'check',def:true}]},
+    {g:'No escritório'},
+    {k:'ativo',l:'Ativo no escritório',t:'check',def:true},
+    {k:'_acesso',t:'html',id:'acessoBox'}]},
   clientes:{t:'Cliente',f:[
     {g:'Qualificação'},
     {k:'nome',l:'Nome completo',t:'text',req:1},
@@ -619,6 +623,10 @@ function renderChecklist(v){
 
 let SH=null;
 function openForm(col,id,preset,onSaved){
+  if(!ehGestor()){
+    if(col==='honorarios')return toast('Só os gestores mexem no financeiro.');
+    if(col==='equipe'){const r=id&&byId('equipe',id);if(!r)return toast('Só os gestores cadastram pessoas na equipe.');if(String(r.email||'').toLowerCase()!==String(me&&me.email||'').toLowerCase())return toast('Só os gestores alteram o cadastro de outras pessoas.');}
+  }
   const F=FORMS[col],rec=id?byId(col,id):null;
   const vals={...(rec||{})};
   if(!rec){F.f.forEach(fd=>{if(fd.def!==undefined)vals[fd.k]=fd.def;});if(col==='prazos'){vals.gatilho='djen';vals.contagem='uteis';vals.justica='estadual';}Object.assign(vals,preset||{});}
@@ -628,7 +636,7 @@ function openForm(col,id,preset,onSaved){
   sh.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="shT">
     <div class="ph"><h3 id="shT">${rec?'Editar':'Novo'}: ${esc(F.t.toLowerCase())}</h3><button class="btn ghost sm" id="shX" type="button">Fechar</button></div>
     <form class="pb" id="shF" novalidate>${F.f.map(fd=>fieldHtml(fd,fd.g?'':vals[fd.k])).join('')}${F.calc?'<div class="calc" id="calcBox"></div>':''}</form>
-    <div class="pf">${rec?'<button class="btn danger" id="shDel" type="button">Excluir</button>':''}<div class="r"><button class="btn" id="shC" type="button">Cancelar</button><button class="btn pri" id="shS" type="button">Salvar</button></div></div>
+    <div class="pf">${rec&&(ehGestor()||col==='tarefas')?'<button class="btn danger" id="shDel" type="button">Excluir</button>':''}<div class="r"><button class="btn" id="shC" type="button">Cancelar</button><button class="btn pri" id="shS" type="button">Salvar</button></div></div>
   </div>`;
   sh.hidden=false;
   F.f.forEach(fd=>{if(fd.t==='file')renderFile(fd);});
@@ -687,18 +695,8 @@ async function doSave(){
   const btn=$('#shS');btn.disabled=true;btn.textContent='Salvando…';
   const novo=await salvar(col,id,{...(old||{}),...v},SH.novoId);
   if(!novo){if(btn.isConnected){btn.disabled=false;btn.textContent='Salvar';}return;}
-  if(col==='equipe')await sincronizarAcesso(v,old);
   const cb=SH&&SH.onSaved;closeForm();toast('Salvo.');
   if(cb)cb(novo,v);
-}
-async function sincronizarAcesso(v,old){
-  const email=(v.email||'').toLowerCase(),oldEmail=(old&&old.email||'').toLowerCase(),eu=(me&&me.email||'').toLowerCase();
-  try{
-    if(oldEmail&&oldEmail!==email&&oldEmail!==eu)await sb.from('acesso').delete().eq('email',oldEmail);
-    if(v.acesso&&email){const{error}=await sb.from('acesso').upsert({email});if(error)throw error;}
-    else if(email&&email!==eu){await sb.from('acesso').delete().eq('email',email);}
-    else if(email===eu&&!v.acesso)toast('Seu próprio acesso foi mantido, para você não ficar trancado fora.');
-  }catch(e){erroGravar(e);}
 }
 function renderCalc(v){
   const box=$('#calcBox');if(!box)return;const r=calcPrazo(comTribunal(v));
@@ -735,6 +733,7 @@ function cadastrarIntimacao(hash){
 
 /* ---------- ajustes ---------- */
 function openConfig(){
+  if(!ehGestor()&&typeof openMinhaConta==='function')return openMinhaConta();
   const c=S.config||{};const sh=$('#sheet');
   SH={col:'__config',files:{}};
   const f=(k,l,ph,half)=>`<div class="fld${half?' half':''}"><label for="cf_${k}">${l}</label><input class="input" id="cf_${k}" value="${esc(c[k]||'')}" placeholder="${esc(ph||'')}"></div>`;
@@ -770,7 +769,7 @@ function openConfig(){
     <div class="pf"><button class="btn" id="cfSair" type="button">Sair da conta</button><div class="r"><button class="btn" id="cfC" type="button">Cancelar</button><button class="btn pri" id="cfS" type="button">Salvar</button></div></div></div>`;
   sh.hidden=false;let logo=c.logo||'';
   $('#cfX').onclick=$('#cfC').onclick=closeForm;
-  $('#cfSair').onclick=()=>{closeForm();sb.auth.signOut();};
+  $('#cfSair').onclick=()=>{closeForm();sairDaConta();};
   $('#cfBackup').onclick=baixarBackup;
   if(typeof renderMfaAjustes==='function')renderMfaAjustes();
   if(typeof renderSuspensoes==='function')renderSuspensoes();
@@ -811,7 +810,7 @@ function openMais(){
   const ic=id=>document.querySelector(`#nav [data-v="${id}"] svg`)?.outerHTML||'';
   const it=(v,l)=>`<a href="#${v}" data-close>${ic(v)}${l}</a>`;
   sh.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="mT"><div class="ph"><h3 id="mT">Mais</h3><button class="btn ghost sm" id="mX" type="button">Fechar</button></div>
-  <div class="pb"><div class="maisgrid">${it('tarefas','Tarefas')}${it('processos','Processos')}${it('juri','Júri')}${it('previdenciario','Previdenciário')}${it('financeiro','Financeiro')}${it('documentos','Documentos')}${it('equipe','Equipe')}${it('relatorios','Relatórios')}${it('historico','Histórico')}<a href="#" data-cfg>${ic('inicio')}Ajustes</a></div></div></div>`;
+  <div class="pb"><div class="maisgrid">${it('tarefas','Tarefas')}${it('processos','Processos')}${it('juri','Júri')}${it('previdenciario','Previdenciário')}${ehGestor()?it('financeiro','Financeiro'):''}${it('documentos','Documentos')}${it('equipe','Equipe')}${ehGestor()?it('acessos','Acessos')+it('relatorios','Relatórios')+it('historico','Histórico'):''}<a href="#" data-cfg>${ic('inicio')}Ajustes</a></div></div></div>`;
   sh.hidden=false;$('#mX').onclick=closeForm;
 }
 

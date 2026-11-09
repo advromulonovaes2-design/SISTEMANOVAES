@@ -67,11 +67,19 @@ Abra `config.js` no Bloco de Notas e troque os dois textos `COLE-AQUI...` pela *
 3. Abra o e-mail de confirmação, toque no link e depois entre no sistema.
 4. Toque em **Ajustes** e preencha: nome do escritório, endereço, cidade, telefone, e-mail e chave Pix. Isso vai para a procuração e o contrato. A logo Palha Novaes já vem instalada.
 5. Ainda em **Ajustes**, crie a **senha do cofre** (para as senhas gov.br das clientes) e cadastre os feriados locais (ex.: 15/08 Adesão do Pará; 08/12 N. Sra. da Conceição em Belém).
-6. Na aba **Equipe**, cadastre-se: nome, função Advogado(a), **OAB** (ex.: `PA 012345`), e-mail e marque **Pode entrar no sistema**.
+6. Na aba **Equipe**, cadastre-se: nome, função Advogado(a), **OAB** (ex.: `PA 012345`) e e-mail. O e-mail que você pôs no SQL já entra como **gestor**.
 7. **Verificação em duas etapas (recomendado)**: em **Ajustes → Verificação em duas etapas**, toque **Ativar**. Instale no celular o **Google Authenticator** ou o **Microsoft Authenticator**, leia o QR code e digite o código de 6 números. A partir daí, além da senha, o sistema pede o código que muda a cada 30 segundos. Depois que todos tiverem ativado, ligue **Exigir de toda a equipe**: quem ainda não ativou é levado a ativar no próximo login.
 8. Ainda em **Ajustes**, preencha **Nome do titular do Pix** e **Cidade do titular do Pix**. Com isso, as cobranças saem com o **Pix copia e cola** já com o valor da parcela.
 
-**Para cada colega**: cadastre na Equipe com o e-mail dele e marque **Pode entrar no sistema**. Ele abre o endereço e usa **Primeiro acesso** com esse e-mail.
+**Para cada colega**: na aba **Acessos**, digite o e-mail dele, escolha **Equipe** ou **Gestor** e toque **Liberar acesso**. Ele abre o endereço e usa **Primeiro acesso** com esse e-mail. Cadastre-o também na **Equipe** (OAB e canais de aviso).
+
+### Gestores e equipe
+- **Gestor**: vê e faz tudo, inclusive Ajustes do escritório, Equipe, **Acessos**, Financeiro, Relatórios, Histórico e excluir registros.
+- **Equipe**: trabalha em clientes, processos, prazos, intimações, tarefas, júri, documentos e agenda (vê, cadastra e edita). Não vê financeiro, relatórios nem histórico, e não exclui nada além de cartões de tarefa. No lugar de "Ajustes" aparece **Minha conta** (aviso no celular, duas etapas e os próprios canais de aviso).
+- Cada pessoa entra com o próprio e-mail e senha. **Sair da conta** desconecta só aquele aparelho: os outros aparelhos e os outros logins continuam como estão. No mesmo computador, para trocar de pessoa, é só sair e entrar com o outro e-mail.
+- Na aba **Acessos** o gestor vê quem está liberado, o último acesso, quem ativou as duas etapas e quem criou conta sem estar liberado (libere só quem você conhece).
+- Ninguém consegue tirar o próprio acesso de gestor: isso evita o escritório ficar sem gestor. Se precisar, o outro gestor faz.
+- Essas regras valem no banco de dados, não só na tela.
 
 > Se alguém perder o celular do autenticador: outra pessoa com acesso pode entrar em Supabase → **Authentication → Users**, abrir o usuário e remover o fator de MFA. Ele entra só com a senha e ativa de novo.
 
@@ -134,7 +142,7 @@ Para testar a cópia de segurança na hora: **Run workflow** → marque **Fazer 
 
 Funciona como a notificação de qualquer aplicativo, sem depender de Telegram ou WhatsApp.
 
-1. **Uma vez só (administrador)**, no computador: **Ajustes → Notificações no celular → Gerar chaves de notificação**. Aparece uma **chave secreta**: copie e crie no GitHub o Secret `VAPID_PRIVATE` com ela (passo 9). Ela aparece só nessa hora e não fica guardada no sistema. Se perder, gere chaves novas (aí todos ativam de novo).
+1. **Uma vez só (um gestor)**, no computador: **Ajustes → Notificações no celular → Gerar chaves de notificação**. Aparece uma **chave secreta**: copie e crie no GitHub o Secret `VAPID_PRIVATE` com ela (passo 9). Ela aparece só nessa hora e não fica guardada no sistema. Se perder, gere chaves novas (aí todos ativam de novo).
 2. **Cada pessoa, no próprio celular**: abra o sistema instalado (passo 11) → **Ajustes → Receber avisos neste aparelho** → permita as notificações. Use **Mandar aviso de teste** para conferir.
 3. No iPhone, só funciona com o sistema instalado na Tela de Início (iOS 16.4 ou mais novo).
 
@@ -273,7 +281,7 @@ No cadastro do cliente, em **Checklist de documentos**, escolha **Qual caso voc�
 
 - **O robô mostra erro 403 ou "Sem conexão" no DJEN**: o DJEN pode bloquear servidores fora do Brasil (o GitHub roda nos EUA). Plano B: rodar o robô no seu computador. Instale o Python (python.org, marque "Add to PATH"), copie `robo/robo.py` e `robo/rodar-no-windows.exemplo.bat` para uma pasta sua, preencha o `.bat` e agende no **Agendador de Tarefas** do Windows para 7h e 16h. Não suba o `.bat` preenchido para o GitHub.
 - **Última movimentação não aparece**: a DataJud do CNJ atualiza com alguns dias de atraso e não cobre todos os tribunais. Se o relatório mostrar erro 401, a chave pública do CNJ mudou. Pegue a nova em datajud-wiki.cnj.jus.br e crie o Secret `DATAJUD_KEY`.
-- **"E-mail ainda não foi liberado"**: falta marcar **Pode entrar no sistema** no cadastro da pessoa na Equipe.
+- **"E-mail ainda não foi liberado"**: um gestor precisa liberar o e-mail na aba **Acessos**.
 - **O GitHub parou de rodar o robô**: em repositórios públicos, o GitHub pausa agendamentos após 60 dias sem alterações e manda um e-mail. É só entrar em Actions e reativar.
 - **Pede o código e o celular do autenticador sumiu**: veja o aviso no fim do "Primeiro acesso" (remover o fator em Authentication → Users).
 - **Aviso no celular não chega**: confira o Secret `VAPID_PRIVATE` e se o relatório do robô mostra "Aparelhos com notificação". No Android, veja se o Chrome tem permissão de notificação; no iPhone, use o app instalado na Tela de Início.

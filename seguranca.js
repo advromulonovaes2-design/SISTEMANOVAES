@@ -64,8 +64,8 @@ async function renderMfaAjustes(){
   const ativo=f.verificados.length>0;
   box.innerHTML=`${ativo?`<div class="banner" style="margin:0;background:var(--ok-soft);color:var(--ok)">Ativa na sua conta${f.verificados[0].created_at?" desde "+fmtDT(f.verificados[0].created_at):""}. Ao entrar, o sistema pede o código do aplicativo.</div>`
       :`<span class="hint">Além da senha, o sistema pede um código que muda a cada 30 segundos no seu celular. Se alguém descobrir sua senha, não consegue entrar.</span><div id="mfaCad"><button class="btn pri" id="mfaAtivar" type="button">Ativar verificação em duas etapas</button></div>`}
-    <label class="chk"><input type="checkbox" id="cfMfaObrig" ${S.config.mfaObrigatorio?'checked':''} ${ativo?'':'disabled'}>Exigir de toda a equipe</label>
-    <span class="hint">${ativo?'Quem ainda não tiver cadastrado vai precisar cadastrar no próximo acesso.':'Ative na sua conta primeiro para poder exigir da equipe.'}</span>
+    ${ehGestor()?`<label class="chk"><input type="checkbox" id="cfMfaObrig" ${S.config.mfaObrigatorio?'checked':''} ${ativo?'':'disabled'}>Exigir de toda a equipe</label>
+    <span class="hint">${ativo?'Quem ainda não tiver cadastrado vai precisar cadastrar no próximo acesso.':'Ative na sua conta primeiro para poder exigir da equipe.'}</span>`:(S.config.mfaObrigatorio?'<span class="hint">O escritório exige a verificação em duas etapas de todos.</span>':'')}
     ${ativo?'<div><button class="btn sm danger" id="mfaDesativar" type="button">Desativar na minha conta</button></div>':''}`;
   const a=$('#mfaAtivar');if(a)a.onclick=()=>cadastrarMFA($('#mfaCad'),renderMfaAjustes);
   const ob=$('#cfMfaObrig');if(ob)ob.onchange=async()=>{if(await salvarConfig({...S.config,mfaObrigatorio:ob.checked}))toast(ob.checked?'Agora toda a equipe precisa da verificação em duas etapas.':'Verificação em duas etapas opcional.');};
