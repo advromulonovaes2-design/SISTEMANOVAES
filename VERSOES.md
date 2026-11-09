@@ -23,6 +23,9 @@ A versão em uso aparece em **Ajustes → Sobre**.
 - Sistema publicado direto na raiz do repositório.
 - Botão **Sair** no topo, com o nome e o papel de quem está logado.
 - Botão **Buscar agora** na aba Intimações (função `buscar-intimacoes` no Supabase + secret `GITHUB_TOKEN`), com o horário e o resultado da última busca. O robô ganhou o modo "busca", que só procura intimações e não manda avisos.
+- **Buscar agora** com escolha de OAB e período (até 2 anos). Comunicações com mais de 7 dias entram como "antigas"; a nova aba **Processos da OAB** agrupa por processo e permite cadastrar os que faltam.
+- Cliente novo pode ser cadastrado de dentro do formulário do processo.
+- Corrigido o erro "invalid input syntax for type uuid" ao salvar.
 - O robô consulta o DJEN pela função `djen` do Supabase, rodando em São Paulo: o DJEN recusa os servidores do GitHub (EUA). Testado: a OAB PA 42826 trouxe a primeira intimação.
 - O robô se identifica ao Supabase de um jeito que a chave secreta é aceita (antes era recusada como se viesse de um navegador).
 

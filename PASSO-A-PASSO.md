@@ -150,7 +150,10 @@ O robô manda o aviso para o celular de cada responsável junto com os outros ca
 
 ## 13. Botão "Buscar agora" nas Intimações
 
-Além das buscas automáticas (segunda a sexta, 7h e 16h), a aba **Intimações** tem o botão **Buscar agora**: ele pede ao robô uma busca no DJEN na hora. Leva de 1 a 3 minutos e as novas aparecem sozinhas na tela. Essa busca não manda avisos por Telegram, e-mail ou WhatsApp.
+Além das buscas automáticas (segunda a sexta, 7h e 16h), a aba **Intimações** tem o botão **Buscar agora**: ele pede ao robô uma busca no DJEN na hora, sem mandar avisos por Telegram, e-mail ou WhatsApp.
+- Antes de tocar, escolha a **OAB** (ou "Todas as OABs") e o **período**: recentes (3 dias), 30 dias, 90 dias, 1 ano ou 2 anos. Quanto maior o período, mais demora (de 1 minuto a uns 20).
+- Comunicações dos últimos 7 dias entram em **Novas**. As mais antigas entram como **antigas**, para não lotar a lista.
+- A aba **Processos da OAB** mostra um cartão por processo encontrado, com quantas publicações teve e a última data, e o botão **Cadastrar processo** para os que ainda não estão no sistema. O DJEN só traz processos que tiveram alguma publicação no período escolhido: para montar a carteira, faça uma busca de "Últimos 2 anos" por OAB.
 
 Para ligar o botão (uma vez só), o GitHub precisa de um token que só sabe rodar o robô:
 1. No GitHub, clique na sua foto → **Settings** → no fim do menu, **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
