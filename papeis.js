@@ -110,3 +110,15 @@ function openMinhaConta(){
   if(typeof renderPushAjustes==='function')renderPushAjustes();
   if(typeof renderMfaAjustes==='function')renderMfaAjustes();
 }
+
+/* botão Sair no topo e nome de quem está logado */
+function mostrarQuemSou(){
+  const q=$('#quemSou');if(!q||!me)return;const m=membroPorEmail(meuEmail());
+  q.textContent=(m&&m.nome?m.nome.split(' ')[0]:meuEmail())+' · '+(ehGestor()?'gestor':'equipe');q.title=meuEmail();
+}
+(window.HOOKS_CARREGAR=window.HOOKS_CARREGAR||[]).push(async()=>{setTimeout(mostrarQuemSou,0);});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#btnSair');if(!b)return;
+  if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Sair mesmo?';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='Sair';}},4000);return;}
+  sairDaConta();
+});

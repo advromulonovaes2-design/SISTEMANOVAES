@@ -247,3 +247,6 @@ body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],bo
 .papel{display:inline-flex;align-items:center;gap:4px}
 .acc-form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;width:100%}
 @media (max-width:620px){.acc-form{grid-template-columns:1fr 1fr}.acc-form .input:first-child{grid-column:1/-1}}
+.top .quem{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.top #btnSair{margin-left:6px}
+@media (max-width:620px){.top .quem{display:none}}
