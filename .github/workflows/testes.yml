@@ -1,0 +1,44 @@
+name: Testes do sistema
+
+# Roda a cada mudança no repositório. Se algo quebrar, o GitHub mostra um X vermelho
+# no commit e manda e-mail. O site continua publicado; o teste serve de alarme.
+on:
+  push:
+  workflow_dispatch: {}
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: teste
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: teste
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Código do sistema sem erro de digitação
+        run: for f in *.js; do node --check "$f"; done
+      - name: Robô sem erro de digitação
+        run: python -m py_compile robo/robo.py
+      - name: Cálculo de prazos e Pix
+        run: node testes/calculos.js
+      - name: Banco de dados (instalação nova, atualização e regras de acesso)
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -f testes/supabase-falso.sql
+          sed "s/SEU-EMAIL-AQUI@gmail.com/gestor1@x.com/" banco/1-criar-tabelas.sql | psql -v ON_ERROR_STOP=1 -q
+          psql -v ON_ERROR_STOP=1 -q -f banco/2-atualizacao.sql
+          psql -v ON_ERROR_STOP=1 -f testes/banco.sql

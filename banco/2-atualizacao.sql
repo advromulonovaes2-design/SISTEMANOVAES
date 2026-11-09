@@ -368,6 +368,89 @@ drop policy if exists ler on public.historico;
 create policy ler on public.historico for select to authenticated using (public.eh_gestor());
 
 -- ---------------------------------------------------------------------
+-- Agenda no celular: cada pessoa tem um link secreto (Google Agenda, iPhone, Outlook)
+-- ---------------------------------------------------------------------
+alter table public.acesso add column if not exists agenda_token uuid;
+
+create or replace function public.meu_link_agenda(p_novo boolean default false)
+returns uuid
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  e text := lower(coalesce(auth.jwt() ->> 'email', ''));
+  t uuid;
+begin
+  if not public.autorizado() then return null; end if;
+  select agenda_token into t from public.acesso where lower(email) = e;
+  if t is null or p_novo then
+    t := gen_random_uuid();
+    update public.acesso set agenda_token = t where lower(email) = e;
+  end if;
+  return t;
+end $$;
+revoke all on function public.meu_link_agenda(boolean) from public, anon;
+grant execute on function public.meu_link_agenda(boolean) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- Acompanhamento pelo cliente: link que mostra a fase dos processos dele
+-- ---------------------------------------------------------------------
+create table if not exists public.acompanhamentos (
+  token      uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null,
+  criado_por text,
+  criado_em  timestamptz not null default now(),
+  ativo      boolean not null default true
+);
+alter table public.acompanhamentos enable row level security;
+drop policy if exists escritorio on public.acompanhamentos;
+create policy escritorio on public.acompanhamentos for all to authenticated using (public.autorizado()) with check (public.autorizado());
+revoke all on public.acompanhamentos from anon;
+grant select, insert, update, delete on public.acompanhamentos to authenticated;
+
+create or replace function public.acompanhamento_info(p_token uuid)
+returns json
+language sql stable security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'cliente', split_part(coalesce(c.dados ->> 'nome', ''), ' ', 1),
+    'escritorio', coalesce(nullif(g.dados ->> 'nome', ''), 'Palha Novaes Advocacia'),
+    'telefone', coalesce(g.dados ->> 'telefone', ''),
+    'processos', coalesce((
+      select json_agg(json_build_object(
+        'numero', p.dados ->> 'numero',
+        'area', p.dados ->> 'area',
+        'fase', coalesce(nullif(p.dados ->> 'fasePrev', ''), nullif(p.dados ->> 'faseCrim', ''), nullif(p.dados ->> 'faseTrab', ''), nullif(p.dados ->> 'faseOutro', '')),
+        'especie', p.dados ->> 'especie',
+        'tribunal', p.dados ->> 'tribunal',
+        'vara', p.dados ->> 'vara',
+        'movimento', m.nome,
+        'movimento_data', m.data,
+        'compromissos', coalesce((
+          select json_agg(json_build_object('tipo', e.dados ->> 'tipo', 'data', e.dados ->> 'data', 'hora', e.dados ->> 'hora',
+                                            'modalidade', e.dados ->> 'modalidade', 'local', e.dados ->> 'local')
+                          order by e.dados ->> 'data', e.dados ->> 'hora')
+          from public.eventos e
+          where e.dados ->> 'processoId' = p.id::text
+            and e.dados ->> 'data' >= to_char(current_date, 'YYYY-MM-DD')
+            and coalesce(e.dados ->> 'concluido', 'false') <> 'true'
+            and e.dados ->> 'tipo' in ('Audiência', 'Perícia judicial', 'Perícia administrativa (INSS)', 'Plenário do Júri', 'Sessão de julgamento', 'Reunião com cliente', 'Atendimento')
+        ), '[]'::json)
+      ) order by p.dados ->> 'numero')
+      from public.processos p
+      left join public.movimentacoes m on m.numero = regexp_replace(coalesce(p.dados ->> 'numero', ''), '\D', '', 'g')
+      where p.dados ->> 'clienteId' = c.id::text
+    ), '[]'::json)
+  )
+  from public.acompanhamentos a
+  join public.clientes c on c.id = a.cliente_id
+  left join public.config g on g.id = 'geral'
+  where a.token = p_token and a.ativo;
+$$;
+grant execute on function public.acompanhamento_info(uuid) to anon, authenticated;
+
+-- ---------------------------------------------------------------------
 -- Envio de documentos pelo cliente (página pública com link)
 -- ---------------------------------------------------------------------
 create or replace function public.token_envio_valido(p text)

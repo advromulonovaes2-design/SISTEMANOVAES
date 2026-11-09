@@ -131,7 +131,7 @@ function rowItemCal(x){
       ${x.linkInfo&&linkSeguro(x.link)?`<div class="m">${esc(x.linkInfo)}</div>`:''}${linkSeguro(x.link)?`<div class="acts">${botoesLink(x.link,x.linkInfo)}</div>`:''}</div></div>`;
 }
 function moverCal(kind,id,dia){
-  if(kind==='prazo'){const p=byId('prazos',id);if(!p)return;atualizar('prazos',id,{vencManual:dia,vencimento:dia}).then(ok=>ok&&toast(`Vencimento ajustado à mão para ${fmtD(dia)}. Para voltar ao cálculo, apague o ajuste no prazo.`));}
+  if(kind==='prazo'){const p=byId('prazos',id);if(!p)return;atualizar('prazos',id,{vencManual:dia,vencimento:dia,conferidoPor:'',conferidoEm:''}).then(ok=>ok&&toast(`Vencimento ajustado à mão para ${fmtD(dia)}. Para voltar ao cálculo, apague o ajuste no prazo.`));}
   else{const e=byId('eventos',id);if(!e||e.data===dia)return;atualizar('eventos',id,{data:dia}).then(ok=>ok&&toast(`Movido para ${fmtD(dia)}.`));}
 }
 

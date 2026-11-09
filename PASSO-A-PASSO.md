@@ -294,6 +294,44 @@ No cadastro do cliente, em **Checklist de documentos**, escolha **Qual caso voc�
 
 ---
 
+## Novidades da versão 3.2
+
+**Dupla conferência de prazo**
+- Todo prazo novo aparece como **Falta conferir**. Outra pessoa do escritório toca em **Conferir**, revê data, dias, contagem e vencimento, e confirma com **Confere**, ou toca em **Não confere** para corrigir.
+- Quem cadastrou não confere o próprio prazo, a não ser que só uma pessoa use o sistema.
+- Se alguém mudar a data, os dias ou a contagem, o prazo volta a precisar de conferência.
+- O Início mostra "Prazos aguardando conferência" e o aviso do robô diz quando um prazo ainda não foi conferido.
+
+**Saúde do sistema** (gestores, no topo dos Ajustes)
+- Mostra se o robô rodou sozinho, se o DJEN está respondendo, se os avisos têm para onde ir, a data da última cópia de segurança, quem ainda não ativou as duas etapas, dados do escritório, cofre e prazos sem conferência.
+- Quando algo grave acontece (robô parado, avisos sem canal, DJEN fora duas vezes seguidas), aparece uma faixa vermelha no Início, e o robô avisa no grupo/e-mail geral.
+
+**Agenda no celular** (Ajustes ou Minha conta › Agenda no celular)
+- Cada pessoa copia o próprio link ("só os meus" ou "escritório todo") e assina no Google Agenda (calendar.google.com › Outras agendas › + › Do URL), no iPhone (botão "Abrir no iPhone") ou no Outlook.
+- Prazos entram como dia inteiro; audiências, perícias e compromissos com horário e link da sala.
+- O link é pessoal: quem tiver o link vê nomes de clientes e processos. Se vazar, toque em "Gerar link novo".
+
+**Intimações**
+- Filtro por OAB e por responsável.
+- Caixinhas para selecionar várias e **Ignorar selecionadas** (ex.: listas de distribuição).
+- Quando o processo já existe, o botão vira **Lançar prazo**.
+
+**Completar pelo CNJ** (no cadastro do processo, com o número de 20 dígitos)
+- O botão **Completar pelo CNJ** traz classe, assuntos, vara, data de ajuizamento e as últimas movimentações da base pública do CNJ, e preenche tribunal e vara se estiverem vazios.
+
+**Acompanhamento pelo cliente** (no cadastro do cliente)
+- **Criar link de acompanhamento** gera um link (página `acompanhar.html`) para mandar pelo WhatsApp. O cliente vê, sem senha, a fase de cada processo, a última movimentação do CNJ e as próximas audiências e perícias.
+- Ele não vê prazos, valores, documentos nem anotações. Dá para desativar o link a qualquer momento.
+- Atenção com processos sigilosos e criminais: só mande o link se fizer sentido para o caso.
+
+**Testes automáticos**
+- A cada mudança no GitHub, o arquivo `.github/workflows/testes.yml` testa o código, os cálculos de prazo e Pix e as regras do banco. Se algo quebrar, aparece um X vermelho no GitHub e chega e-mail. O site continua no ar; o teste serve de alarme.
+- Para fazer o teste na hora: GitHub › Actions › **Testes do sistema** › Run workflow.
+
+**Espaço no banco grátis**: comunicações antigas do DJEN agora são guardadas sem a cópia completa, o que deixa as buscas de 2 anos bem mais leves.
+
+---
+
 ## Se algo der errado
 
 - **O robô mostra erro 403 no DJEN**: o DJEN recusa servidores fora do Brasil, e o GitHub roda nos EUA. Por isso o robô consulta o DJEN pela função `djen` do Supabase, que roda em São Paulo (o relatório mostra "consultando pela ponte do Supabase em São Paulo"). Se a ponte falhar, confira se a função `djen` aparece em Supabase › Edge Functions. Plano B: rodar o robô num computador no Brasil (Python instalado, `robo/robo.py` e `robo/rodar-no-windows.exemplo.bat` preenchido, com `set DJEN_DIRETO=1`, agendado no Agendador de Tarefas do Windows). Não suba o `.bat` preenchido para o GitHub.

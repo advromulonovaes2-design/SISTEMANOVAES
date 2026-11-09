@@ -31,7 +31,7 @@ function copiar(txt){
 }
 
 /* ---------- dados ---------- */
-const VERSAO='3.1 · 09/11/2026';
+const VERSAO='3.2 · 09/11/2026';
 let PAPEL='equipe';const ehGestor=()=>PAPEL==='gestor';
 const SO_GESTOR=['financeiro','relatorios','historico','acessos'];
 const TABS=['equipe','clientes','processos','prazos','tarefas','honorarios','documentos','eventos','juri','modelos'];
@@ -278,9 +278,9 @@ function rowPrazo(p){
     <div class="main">
       <div class="t">${esc(p.descricao||'Prazo sem descrição')}</div>
       <div class="m">${pr?`<span class="mono">${esc(pr.numero||'Sem número')}</span>`:'Sem processo vinculado'}${cli?' · '+esc(cli.nome):''}</div>
-      <div class="chips"><span class="chip c-${i.st}">${esc(i.txt)}</span><span class="chip c-mute">${esc(regraTxt(p))}</span>${i.r&&i.r.manual?'<span class="chip c-warn">Ajustado à mão</span>':''}${p.reuPreso&&p.contagem==='corridos'?'<span class="chip c-preso">Réu preso</span>':''}${resp?`<span class="chip c-mute">${esc(resp.nome)}</span>`:''}</div>
+      <div class="chips"><span class="chip c-${i.st}">${esc(i.txt)}</span><span class="chip c-mute">${esc(regraTxt(p))}</span>${i.r&&i.r.manual?'<span class="chip c-warn">Ajustado à mão</span>':''}${p.reuPreso&&p.contagem==='corridos'?'<span class="chip c-preso">Réu preso</span>':''}${resp?`<span class="chip c-mute">${esc(resp.nome)}</span>`:''}${typeof chipConferencia==='function'?chipConferencia(p):''}</div>
     </div>
-    <div class="side"><button class="btn sm ${p.cumprido?'':'pri'}" data-done="${esc(p.id)}" type="button">${p.cumprido?'Reabrir':'Cumprido'}</button></div>
+    <div class="side">${typeof botaoConferir==='function'?botaoConferir(p):''}<button class="btn sm ${p.cumprido?'':'pri'}" data-done="${esc(p.id)}" type="button">${p.cumprido?'Reabrir':'Cumprido'}</button></div>
   </div>`;
 }
 function rowProcesso(pr){
@@ -341,9 +341,11 @@ function rowIntimacao(it){
   const st=it.status||'nova',resp=byId('equipe',it.responsavel_id),cli=byId('clientes',it.cliente_id),area=guessArea(it);
   const txt=String(it.texto||'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();const longo=txt.length>320;
   const link=/^https?:\/\//.test(it.link||'')?it.link:'';
+  const jaProc=digits(it.numero)?S.processos.find(p=>digits(p.numero)===digits(it.numero)):null;
   return `<div class="row a-${areaCls(area)} ${st==='nova'?'':'soft'}">
+    ${st==='nova'?`<label class="selint" title="Selecionar"><input type="checkbox" data-selint="${esc(it.hash)}" ${UI.selInt&&UI.selInt.has(it.hash)?'checked':''} aria-label="Selecionar intimação"></label>`:''}
     <div class="main">
-      <div class="chips"><span class="chip ${st==='nova'?'c-warn':st==='cadastrada'?'c-ok':'c-mute'}">${st==='nova'?'Nova':st==='cadastrada'?'Cadastrada':st==='antiga'?'Antiga':'Ignorada'}</span>${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${it.tipo_documento||it.tipo?`<span class="chip c-mute">${esc(it.tipo_documento||it.tipo)}</span>`:''}${area!=='Outro'?areaChip(area):''}</div>
+      <div class="chips"><span class="chip ${st==='nova'?'c-warn':st==='cadastrada'?'c-ok':'c-mute'}">${st==='nova'?'Nova':st==='cadastrada'?'Cadastrada':st==='antiga'?'Antiga':'Ignorada'}</span>${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${it.tipo_documento||it.tipo?`<span class="chip c-mute">${esc(it.tipo_documento||it.tipo)}</span>`:''}${area!=='Outro'?areaChip(area):''}${jaProc?'<span class="chip c-ok">Processo já cadastrado</span>':''}</div>
       <div class="t mono">${esc(it.numero||'Sem número')}</div>
       <div class="m">Disponibilizada em ${fmtDS(it.data_disponibilizacao)}${it.orgao?' · '+esc(it.orgao):''}</div>
       ${it.classe?`<div class="m">${esc(it.classe)}</div>`:''}
@@ -351,7 +353,7 @@ function rowIntimacao(it){
       <div class="m">Encontrada pela ${it.origem==='nome'?'busca do cliente'+(cli?' '+esc(cli.nome):''):'OAB '+esc(it.oab||'')}${resp?' · '+esc(resp.nome):''}</div>
       ${it.ultima_mov?`<div class="mov"><b>Última movimentação</b>${esc(it.ultima_mov)}${it.ultima_mov_data?' — '+fmtDT(it.ultima_mov_data):''}</div>`:''}
       ${txt?`<div class="teor" data-teor-box><span>${esc(longo?txt.slice(0,320)+'…':txt)}</span><span hidden>${esc(txt)}</span>${longo?' <button class="lnk" data-teor type="button">Ler tudo</button>':''}</div>`:''}
-      <div class="acts">${st==='nova'?`<button class="btn pri sm" data-cad="${esc(it.hash)}" type="button">Cadastrar</button><button class="btn sm" data-ign="${esc(it.hash)}" type="button">Ignorar</button>`:st==='ignorada'?`<button class="btn sm" data-reab="${esc(it.hash)}" type="button">Voltar para novas</button>`:''}${link?`<a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">Abrir no DJEN</a>`:''}</div>
+      <div class="acts">${st==='nova'?`<button class="btn pri sm" data-cad="${esc(it.hash)}" type="button">${jaProc?'Lançar prazo':'Cadastrar'}</button><button class="btn sm" data-ign="${esc(it.hash)}" type="button">Ignorar</button>`:st==='ignorada'?`<button class="btn sm" data-reab="${esc(it.hash)}" type="button">Voltar para novas</button>`:''}${link?`<a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">Abrir no DJEN</a>`:''}</div>
     </div>
   </div>`;
 }
@@ -399,8 +401,15 @@ VIEWS.intimacoes={t:'Intimações',
   body(){
     document.querySelectorAll('#segInt button').forEach(x=>x.classList.toggle('on',x.dataset.f===UI.intF));
     if(UI.intF==='processos'&&typeof processosDaOab==='function')return processosDaOab();
-    const l=S.intimacoes.filter(i=>UI.intF==='todas'||(i.status||'nova')===UI.intF).slice(0,400);
-    if(l.length)return `<div class="list">${l.map(rowIntimacao).join('')}</div>`;
+    const norm=o=>String(o||'').toUpperCase().replace(/\s+/g,' ').replace(/ 0+(\d)/,' $1');
+    const l=S.intimacoes.filter(i=>UI.intF==='todas'||(i.status||'nova')===UI.intF)
+      .filter(i=>!UI.intOab||norm(i.oab)===UI.intOab).filter(i=>!UI.intResp||i.responsavel_id===UI.intResp).slice(0,400);
+    const oabs=[...new Set(S.intimacoes.map(i=>norm(i.oab)).filter(Boolean))].sort();
+    const sel=UI.selInt||(UI.selInt=new Set());[...sel].forEach(h=>{if(!l.some(i=>i.hash===h&&(i.status||'nova')==='nova'))sel.delete(h);});
+    const novasVis=l.filter(i=>(i.status||'nova')==='nova');
+    const filtros=`<div class="tools intfiltros"><select class="input" id="intOab" aria-label="Filtrar por OAB"><option value="">Todas as OABs</option>${oabs.map(o=>`<option ${o===UI.intOab?'selected':''}>${esc(o)}</option>`).join('')}</select><select class="input" id="intResp" aria-label="Filtrar por responsável">${respOptions(UI.intResp)}</select>${novasVis.length?`<label class="chk"><input type="checkbox" id="intTodas" ${sel.size&&sel.size===novasVis.length?'checked':''}>Selecionar todas</label>`:''}${sel.size?`<button class="btn sm" id="intIgnSel" type="button">Ignorar selecionadas (${sel.size})</button>`:''}</div>`;
+    if(l.length)return filtros+`<div class="list">${l.map(rowIntimacao).join('')}</div>`;
+    if(UI.intOab||UI.intResp)return filtros+vazio('Nada com esses filtros','Troque a OAB ou o responsável acima.');
     if(!S.intimacoes.length)return vazio('Nenhuma intimação ainda','Cadastre as OABs na aba Equipe. Depois que o robô rodar, as intimações aparecem aqui para você cadastrar com um toque.');
     return vazio('Nada neste filtro','Troque o filtro acima para ver as outras.');
   }};
@@ -531,6 +540,7 @@ const FORMS={
     {k:'ckCaso',l:'Qual caso você vai trabalhar?',t:'select',o:CK_CASOS,hint:'A lista abaixo muda conforme o caso. Procuração, contrato, RG/CPF e comprovante de residência estão sempre nela.'},
     {k:'checklist',l:'Checklist',t:'checklist'},
     {k:'_envios',t:'html',id:'enviosBox'},
+    {k:'_acomp',t:'html',id:'acompBox'},
     {g:'Previdenciário',show:isPrevCli},
     {k:'nit',l:'NIT / PIS',t:'text',half:1,mono:1,show:isPrevCli},
     {k:'meuInss',l:'Tem acesso ao Meu INSS?',t:'select',o:['Não sei','Sim','Não'],half:1,show:isPrevCli},
@@ -539,6 +549,7 @@ const FORMS={
     {k:'obs',l:'Observações',t:'area',hint:'O modo de pagamento dos honorários fica na aba Financeiro.'}]},
   processos:{t:'Processo',f:[
     {k:'numero',l:'Número (CNJ) ou protocolo do INSS',t:'text',ph:'0000000-00.0000.0.00.0000',fmt:'cnj',mono:1,hint:'Cole os 20 dígitos que o sistema formata. A última movimentação vem da API do CNJ.'},
+    {k:'_cnj',t:'html',id:'cnjBox'},
     {k:'clienteId',l:'Cliente',t:'ref',col:'clientes',lab:c=>c.nome,novo:'＋ Cadastrar cliente novo…'},
     {k:'area',l:'Área',t:'select',o:['Previdenciário','Criminal','Trabalhista','Outro'],half:1},
     {k:'responsavelId',l:'Responsável',t:'ref',col:'equipe',lab:m=>m.nome,half:1},
@@ -574,6 +585,7 @@ const FORMS={
     {k:'vencManual',l:'Ajustar vencimento à mão (opcional)',t:'date',hint:'Use se o tribunal suspendeu prazos ou se o cálculo não se aplica. No calendário, arrastar o prazo faz o mesmo.'},
     {k:'responsavelId',l:'Responsável',t:'ref',col:'equipe',lab:m=>m.nome},
     {k:'cumprido',l:'Cumprido',t:'check'},
+    {k:'_conf',t:'html',id:'confBox'},
     {k:'obs',l:'Observações',t:'area'}]},
   tarefas:{t:'Tarefa',f:[
     {k:'titulo',l:'Tarefa',t:'text',req:1,ph:'Pedir CNIS ao cliente, protocolar recurso…'},

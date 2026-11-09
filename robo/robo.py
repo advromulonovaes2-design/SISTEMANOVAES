@@ -43,7 +43,7 @@ from email.utils import formataddr
 TZ = timezone(timedelta(hours=-3))  # Belém (sem horário de verão)
 HOJE = datetime.now(TZ).date()
 MODO = os.environ.get("MODO", "manha")  # manha = tudo; tarde = só intimações e movimentações; busca = botão "Buscar agora"
-STATUS = {"djen": "não consultado", "consultas": 0, "novas": 0}
+STATUS = {"djen": "não consultado", "consultas": 0, "novas": 0, "antigas": 0}
 SB_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
 TG_TOKEN = os.environ.get("TELEGRAM_TOKEN", "").strip()
@@ -579,8 +579,11 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
 
     STATUS["consultas"] = sucesso
     STATUS["djen"] = "falhou" if falhas and not sucesso else ("ok" if sucesso else "sem OAB cadastrada")
+    STATUS["falhasSeguidas"] = (int(ANTERIOR.get("falhasSeguidas") or 0) + 1) if STATUS["djen"] == "falhou" else 0
+    if falhas and not sucesso and STATUS["falhasSeguidas"] >= 2 and MODO != "busca":
+        avisos["_geral"].append(f"ATENÇÃO: é a {STATUS['falhasSeguidas']}ª vez seguida que o robô não consegue acessar o DJEN. "
+                                "Confira as intimações manualmente em comunica.pje.jus.br e veja Ajustes › Saúde do sistema. ")
     if falhas and not sucesso:
-        avisos["_geral"].append("O robô não conseguiu acessar o DJEN nesta rodada. Confira as intimações manualmente em comunica.pje.jus.br hoje.")
         log("ATENÇÃO: todas as consultas ao DJEN falharam. Se o erro for 403, o DJEN pode estar bloqueando servidores fora do Brasil: veja o plano B no passo a passo.")
 
     if not achadas:
@@ -605,6 +608,8 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
             n["responsavel_id"] = pr.get("responsavelId")
         n["status"] = "antiga" if (n.get("data_disponibilizacao") or fim) < corte else "nova"
         if n["status"] == "antiga":
+            n["bruto"] = None  # economiza espaço no banco grátis: a cópia completa só fica nas recentes
+            n["texto"] = (n.get("texto") or "")[:3000]
             continue  # antigas não pedem a última movimentação (seriam centenas de consultas)
         mv = ultima_mov(n20) if len(n20) == 20 else None
         if mv:
@@ -676,7 +681,8 @@ def calcular_avisos_prazos(prazos, processos, clientes, avisos):
         quando = "VENCIDO há %d dia(s)" % -dd if dd < 0 else "VENCE HOJE" if dd == 0 else "vence amanhã" if dd == 1 else f"vence em {dd} dias"
         pr = procs.get(pz.get("processoId")) or {}
         cli = clis.get(pr.get("clienteId")) or {}
-        txt = f"• {quando} ({br(venc)}): {pz.get('descricao', 'Prazo')}\n  {pr.get('numero', 'sem processo')}{' — ' + cli['nome'] if cli.get('nome') else ''}"
+        conf = "" if pz.get("conferidoPor") else "\n  ⚠ Ainda não conferido por uma segunda pessoa."
+        txt = f"• {quando} ({br(venc)}): {pz.get('descricao', 'Prazo')}\n  {pr.get('numero', 'sem processo')}{' — ' + cli['nome'] if cli.get('nome') else ''}{conf}"
         avisos[pz.get("responsavelId") or "_geral"].append(("prazo", (dd, txt)))
         n += 1
     log(f"Prazos para avisar: {n}")
@@ -822,6 +828,8 @@ def fazer_backup():
         storage("POST", f"object/backups/{nome}", gz, "application/gzip", {"x-upsert": "true"})
         salvo = True
         log(f"  Guardado no Supabase: backups/{nome} ({tam})")
+        STATUS["ultimoBackup"] = datetime.now(TZ).isoformat()
+        STATUS["backupTamanho"] = tam
     except Exception as e:
         log(f"  Não guardei no Supabase ({e}). Rode banco/2-atualizacao.sql para criar a pasta backups.")
     if salvo:  # mantém as 12 cópias mais novas (cerca de 3 meses)
@@ -887,11 +895,39 @@ def montar_mensagem(itens):
     return "\n\n".join(blocos)
 
 
-def registrar_status():
-    """Guarda quando o robô rodou, para o sistema mostrar "última busca"."""
+ANTERIOR = {}
+
+
+def ler_status_anterior():
     try:
-        sb("POST", "config", {"id": "robo", "dados": {"ultimaExecucao": datetime.now(TZ).isoformat(), "modo": MODO, **STATUS}},
-           prefer="resolution=merge-duplicates,return=minimal")
+        r = sb("GET", "config", params={"select": "dados", "id": "eq.robo"}) or []
+        ANTERIOR.update((r[0].get("dados") or {}) if r else {})
+    except Exception:
+        pass
+
+
+def registrar_status(equipe=None):
+    """Guarda quando e como o robô rodou: o sistema mostra "última busca" e o painel Saúde do sistema."""
+    agora = datetime.now(TZ).isoformat()
+    d = {**ANTERIOR, **STATUS, "ultimaExecucao": agora, "modo": MODO}
+    if MODO in ("manha", "tarde"):
+        d["ultimaRotina"] = agora
+    d["canais"] = {"telegram": bool(TG_TOKEN), "gmail": bool(GM_USER and GM_PASS), "push": bool(VAPID_PRIVATE),
+                   "grupo": bool(TG_TOKEN and TG_GRUPO), "alertaEmail": bool(ALERTA_EMAIL)}
+    if equipe is not None:
+        sem = []
+        for m in equipe:
+            tem = (TG_TOKEN and m.get("telegram")) or (GM_USER and GM_PASS and m.get("email")) or (m.get("callmebot") and m.get("telefone"))
+            if not tem and VAPID_PRIVATE and PUSH.get("lista"):
+                em = str(m.get("email") or "").lower()
+                tem = any(x.get("membro_id") == m.get("id") or str(x.get("email") or "").lower() == em for x in PUSH["lista"])
+            if not tem:
+                sem.append(m.get("nome") or "?")
+        d["semCanal"] = sem
+    d["versaoRobo"] = "3.2"
+    try:
+        sb("POST", "config", {"id": "robo", "dados": d}, prefer="resolution=merge-duplicates,return=minimal")
+        ANTERIOR.update(d)
     except Exception as e:
         log(f"Não registrei o horário da busca: {e}")
 
@@ -910,6 +946,7 @@ def main():
         sys.exit(1)
     log(f"Equipe ativa: {len(equipe)} · clientes: {len(clientes)} · processos: {len(processos)}")
     avisos = defaultdict(list)
+    ler_status_anterior()
 
     try:
         STATUS["novas"] = buscar_intimacoes(equipe, clientes, processos, avisos) or 0
@@ -918,7 +955,7 @@ def main():
         log(f"Busca no DJEN: erro {e}")
     atualizar_movimentacoes(processos, avisos)
     if MODO == "busca":  # botão "Buscar agora": quem apertou está olhando a tela, então não manda avisos
-        registrar_status()
+        registrar_status(equipe)
         log(f"Busca pelo botão concluída: {STATUS}")
         return
     avisar_envios(equipe, processos, clientes, avisos)
@@ -968,10 +1005,13 @@ def main():
             for m in advogados:  # o grupo recebeu o texto; os advogados recebem o aviso no celular
                 enviar_push_membro(m, assunto, texto)
     log(f"Avisos enviados: {ENVIADOS}")
-    registrar_status()
+    push_disponivel()
+    registrar_status(equipe)
     if (MODO != "tarde" and HOJE.weekday() == 0) or FORCAR_BACKUP:
         try:
             fazer_backup()
+            if STATUS.get("ultimoBackup"):
+                registrar_status(equipe)
         except Exception as e:
             log(f"Cópia de segurança falhou: {e}")
 

@@ -131,3 +131,21 @@ function preencherOabsBusca(){
 }
 const AFTER_INT=VIEWS.intimacoes.after;
 VIEWS.intimacoes.after=function(){if(AFTER_INT)AFTER_INT();preencherOabsBusca();};
+
+/* ---------- filtros e seleção em lote nas listas de intimações ---------- */
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='intOab'){UI.intOab=t.value;body_();return;}
+  if(t.id==='intResp'){UI.intResp=t.value;body_();return;}
+  if(t.dataset&&t.dataset.selint){const s=UI.selInt||(UI.selInt=new Set());t.checked?s.add(t.dataset.selint):s.delete(t.dataset.selint);body_();return;}
+  if(t.id==='intTodas'){const s=UI.selInt||(UI.selInt=new Set());s.clear();if(t.checked)document.querySelectorAll('[data-selint]').forEach(x=>s.add(x.dataset.selint));body_();}
+});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('#intIgnSel');if(!b)return;
+  const l=[...(UI.selInt||[])];if(!l.length)return;
+  if(!b.dataset.armed){b.dataset.armed='1';b.textContent=`Toque de novo para ignorar ${l.length}`;return;}
+  b.disabled=true;
+  for(let k=0;k<l.length;k+=100){const{error}=await sb.from('intimacoes').update({status:'ignorada'}).in('hash',l.slice(k,k+100));if(error){b.disabled=false;return erroGravar(error);}}
+  S.intimacoes.forEach(i=>{if(l.includes(i.hash))i.status='ignorada';});UI.selInt.clear();body_();
+  toast(`${l.length} ${l.length===1?'intimação ignorada':'intimações ignoradas'}. Elas ficam em "Ignoradas" e podem voltar.`);
+});

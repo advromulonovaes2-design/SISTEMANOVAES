@@ -9,6 +9,28 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.2 · 09/11/2026
+
+**Banco** (rodar `banco/2-atualizacao.sql`)
+- Link pessoal de agenda (`acesso.agenda_token`, função `meu_link_agenda`).
+- Tabela `acompanhamentos` e função pública `acompanhamento_info` (página do cliente).
+
+**Sistema**
+- Dupla conferência de prazos (`conferencia.js`).
+- Saúde do sistema nos Ajustes e faixa de alerta no Início (`saude.js`).
+- Agenda no celular por link iCal (`agendalink.js` + função `agenda` no Supabase).
+- Intimações: filtros por OAB e responsável, ignorar em lote, "Lançar prazo" quando o processo já existe.
+- Completar processo pelo CNJ (`datajud.js` + função `datajud` no Supabase).
+- Acompanhamento pelo cliente (`acompanha.js` + `acompanhar.html`).
+
+**Robô**
+- Registra canais de aviso, quem está sem canal, última rotina e última cópia de segurança; avisa quando o DJEN falha duas vezes seguidas.
+- Avisos de prazo dizem quando o prazo ainda não foi conferido.
+- Comunicações antigas guardadas sem a cópia completa (economiza espaço).
+
+**Manutenção**
+- Testes automáticos no GitHub (`testes/` e `.github/workflows/testes.yml`).
+
 ## Versão 3.1 · 09/11/2026
 
 **Banco** (já aplicado no Supabase do escritório; em outra instalação, rodar `banco/2-atualizacao.sql`)

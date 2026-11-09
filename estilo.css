@@ -258,3 +258,21 @@ body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],bo
 .tools .busca .busca-sel .input{width:auto;min-width:150px}
 .tools .busca #buscaSt{flex-basis:100%;text-align:right}
 @media (max-width:620px){.tools .busca .busca-sel{width:100%}.tools .busca .busca-sel .input{flex:1;min-width:0}.tools .busca #buscaSt{text-align:left}}
+.saude{display:flex;flex-direction:column;gap:8px}
+.saude .sd{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.saude .sd b{display:block;font-size:14px}
+.saude .sd span:not(.sdi){display:block;font-size:13px;color:var(--muted);line-height:1.45}
+.saude .sdi{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;margin-top:1px}
+.saude .sd.ok .sdi{background:var(--ok-soft,#DFF4E8);color:var(--ok,#067647)}
+.saude .sd.warn .sdi{background:var(--warn-soft,#FCEFD9);color:var(--warn,#A64B00)}
+.saude .sd.bad{border-color:var(--danger,#B42318)}
+.saude .sd.bad .sdi{background:var(--danger,#B42318);color:#fff}
+.saude-banner{display:block;width:100%;text-align:left;cursor:pointer;border:1px solid var(--danger,#B42318);font:inherit;margin-bottom:14px}
+.row .selint{display:flex;align-items:flex-start;padding:2px 0 0 2px;flex:none}
+.row .selint input{width:20px;height:20px;accent-color:var(--pri)}
+.tools.intfiltros{margin-bottom:12px}
+.tools.intfiltros .input{width:auto;min-width:160px}
+@media (max-width:620px){.tools.intfiltros .input{flex:1;min-width:0}}
+.cnjbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:4px;background:var(--surface)}
+.cnjmov{margin:6px 0 0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.cnjmov time{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:4px}
