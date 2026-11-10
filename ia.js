@@ -1,8 +1,8 @@
 'use strict';
 /* =====================================================================
-   Assistente de IA (Claude): monta o pedido com os dados da tela,
-   copia e abre o Claude da conta do advogado. Nada é enviado pelo
-   sistema: o texto só sai quando a pessoa toca em "Abrir no Claude".
+   Assistente de IA (Claude) dentro do sistema: conversa na própria tela,
+   com os dados do processo, da intimação ou do júri. A chave da API fica
+   no Supabase (função "ia"); sem chave, oferece levar o pedido ao Claude.
    ===================================================================== */
 const IA_URL='https://claude.ai/new';
 const IA_BASE=()=>`Você está ajudando o escritório ${(S.config&&S.config.nome)||NOME_PADRAO} (${(S.config&&S.config.cidade)||'Belém/PA'}), que atua em direito previdenciário, criminal e trabalhista.
@@ -89,35 +89,85 @@ const IA_TAREFAS={
   livre:[['Pergunta livre','']]
 };
 
-/* ---------- janela do assistente ---------- */
-function abrirIA({titulo,tipo,contexto,nomes=[]}){
+/* ---------- assistente dentro do sistema (função "ia" no Supabase) ---------- */
+const IA_ST={info:null};
+async function statusIA(forcar){
+  if(IA_ST.info&&!forcar)return IA_ST.info;
+  try{const{data,error}=await sb.functions.invoke('ia',{body:{status:true}});IA_ST.info=error?{erro:true}:data;}catch(_){IA_ST.info={erro:true};}
+  return IA_ST.info;
+}
+function mdLeve(t){
+  const linhas=esc(t).split('\n');let html='',lista='';
+  const fecha=()=>{if(lista){html+=`</${lista}>`;lista='';}};
+  for(let l of linhas){
+    l=l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>').replace(/`([^`]+)`/g,'<code>$1</code>');
+    let m;
+    if((m=l.match(/^#{1,4}\s+(.*)/))){fecha();html+=`<h4>${m[1]}</h4>`;}
+    else if((m=l.match(/^\s*[-•]\s+(.*)/))){if(lista!=='ul'){fecha();html+='<ul>';lista='ul';}html+=`<li>${m[1]}</li>`;}
+    else if((m=l.match(/^\s*\d+[.)]\s+(.*)/))){if(lista!=='ol'){fecha();html+='<ol>';lista='ol';}html+=`<li>${m[1]}</li>`;}
+    else if(!l.trim()){fecha();}
+    else{fecha();html+=`<p>${l}</p>`;}
+  }
+  fecha();return html;
+}
+function abrirIA({titulo,tipo,contexto,nomes=[],clienteId='',processoId='',telefone=''}){
   const tarefas=[...(IA_TAREFAS[tipo]||[]),...IA_TAREFAS.livre];
-  const sh=$('#sheet');SH={col:'__ia'};let anon=(()=>{try{return localStorage.getItem('ia_anon')!=='0';}catch(_){return true;}})();
-  sh.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="iaT" style="max-width:820px"><div class="ph"><h3 id="iaT">Perguntar à IA</h3><button class="btn ghost sm" id="iaX" type="button">Fechar</button></div>
-    <div class="pb" style="display:block">
-      <p class="hint" style="margin:0 0 10px">${esc(titulo||'')} · o sistema monta o pedido com os dados desta tela e abre o Claude da sua conta. Nada sai do sistema antes de você tocar em "Abrir no Claude".</p>
-      <div class="ia-tarefas" role="radiogroup" aria-label="O que pedir">${tarefas.map(([l],i)=>`<button type="button" class="cart-chip ${i===0?'on':''}" data-iatar="${i}">${esc(l)}</button>`).join('')}</div>
-      <div class="fld" style="margin-top:10px"><label for="ia_q">O que você quer da IA</label><textarea class="input" id="ia_q" rows="3" spellcheck="true" lang="pt-BR"></textarea></div>
-      <label class="chk"><input type="checkbox" id="ia_anon" ${anon?'checked':''}>Trocar nomes por iniciais e esconder CPF/CNPJ (recomendado)</label>
-      <details class="ia-prev"><summary>Ver o texto que vai para a IA</summary><pre class="ia-txt" id="ia_prev"></pre></details>
-      <p class="hint" style="margin-top:10px">A IA pode errar e inventar referências. Revise tudo antes de usar; o prazo oficial é sempre o do sistema, conferido por duas pessoas.</p>
+  const sh=$('#sheet');SH={col:'__ia'};const conv=[];let enviando=false;
+  let anon=(()=>{try{return localStorage.getItem('ia_anon')!=='0';}catch(_){return true;}})();
+  sh.innerHTML=`<div class="panel ia-panel" role="dialog" aria-modal="true" aria-labelledby="iaT" style="max-width:860px"><div class="ph"><h3 id="iaT">Assistente de IA</h3><button class="btn ghost sm" id="iaX" type="button">Fechar</button></div>
+    <div class="pb ia-pb" style="display:block">
+      <p class="hint" style="margin:0 0 10px">${esc(titulo||'')}</p>
+      <div class="ia-tarefas" role="group" aria-label="Pedidos prontos">${tarefas.map(([l],i)=>`<button type="button" class="cart-chip" data-iatar="${i}">${esc(l)}</button>`).join('')}</div>
+      <div class="ia-conv" id="iaConv" aria-live="polite"></div>
+      <div id="iaAviso"></div>
     </div>
-    <div class="pf"><button class="btn" id="iaCopiar" type="button">Só copiar</button><div class="r"><button class="btn pri" id="iaAbrir" type="button">Abrir no Claude</button></div></div></div>`;
+    <div class="pf ia-pf"><div class="ia-entrada"><textarea class="input" id="ia_q" rows="2" placeholder="Escreva o que você precisa ou escolha um pedido pronto acima" spellcheck="true" lang="pt-BR"></textarea><button class="btn pri" id="iaEnviar" type="button">Enviar</button></div>
+      <div class="ia-rodape"><label class="chk"><input type="checkbox" id="ia_anon" ${anon?'checked':''}>Trocar nomes por iniciais e esconder CPF/CNPJ</label><span class="hint" id="iaUso"></span></div></div></div>`;
   sh.hidden=false;
-  const montar=()=>{const q=$('#ia_q').value.trim()||'Responda à pergunta do advogado sobre os dados abaixo.';
-    let ctx=contexto;if($('#ia_anon').checked)ctx=anonimizar(ctx,nomes);
-    return `${IA_BASE()}\n\nTAREFA:\n${q}\n\nDADOS (copiados do sistema do escritório):\n${ctx}`;};
-  const prev=()=>{$('#ia_prev').textContent=montar();};
-  const escolher=i=>{sh.querySelectorAll('[data-iatar]').forEach(b=>b.classList.toggle('on',+b.dataset.iatar===i));$('#ia_q').value=tarefas[i][1];if(!tarefas[i][1])$('#ia_q').focus();prev();};
-  sh.querySelectorAll('[data-iatar]').forEach(b=>b.onclick=()=>escolher(+b.dataset.iatar));
-  $('#ia_q').oninput=prev;$('#ia_anon').onchange=()=>{try{localStorage.setItem('ia_anon',$('#ia_anon').checked?'1':'0');}catch(_){}prev();};
-  escolher(0);
+  const ctx=()=>$('#ia_anon').checked?anonimizar(contexto,nomes):contexto;
+  const conv$=$('#iaConv');
+  const pintar=()=>{
+    conv$.innerHTML=conv.map((m,i)=>m.role==='user'?`<div class="ia-msg eu">${esc(m.content)}</div>`
+      :`<div class="ia-msg ia">${m.content?mdLeve(m.content):'<span class="hint">Pensando…</span>'}${m.fim?`<div class="acts ia-acts"><button class="btn sm" type="button" data-iacop="${i}">Copiar</button>${processoId||clienteId?`<button class="btn sm" type="button" data-iapeca="${i}">Salvar como petição</button>`:''}${telefone&&foneWa(telefone)?`<a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/${foneWa(telefone)}?text=${encodeURIComponent(m.content.slice(0,3000))}">Mandar no WhatsApp</a>`:''}</div>`:''}</div>`).join('');
+    conv$.scrollTop=conv$.scrollHeight;const pb=sh.querySelector('.ia-pb');if(pb)pb.scrollTop=pb.scrollHeight;
+  };
+  const aviso=html=>{$('#iaAviso').innerHTML=html||'';};
+  const semChave=()=>aviso(`<div class="banner" style="display:block;margin:10px 0 0"><b>O assistente ainda não está ligado.</b> Um gestor precisa colocar a chave da API da Anthropic no Supabase (veja o passo a passo, "Assistente de IA dentro do sistema"). Enquanto isso, você pode levar este pedido para o Claude:<div class="acts" style="margin:8px 0 0"><button class="btn sm" type="button" id="iaFora">Abrir no Claude</button></div></div>`);
+  const enviar=async texto=>{
+    texto=String(texto||'').trim();if(!texto||enviando)return;
+    enviando=true;$('#iaEnviar').disabled=true;aviso('');
+    conv.push({role:'user',content:texto});const resp={role:'assistant',content:''};conv.push(resp);pintar();$('#ia_q').value='';
+    try{
+      const{data:{session}}=await sb.auth.getSession();const C=window.CONFIG||{};
+      const r=await fetch(`${C.SUPABASE_URL}/functions/v1/ia`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(session&&session.access_token||''),apikey:C.SUPABASE_ANON_KEY},
+        body:JSON.stringify({contexto:ctx(),mensagens:conv.filter(m=>m!==resp).map(({role,content})=>({role,content}))})});
+      if(!r.ok){let e={};try{e=await r.json();}catch(_){}conv.pop();conv.pop();pintar();$('#ia_q').value=texto;
+        if(e.erro==='sem_chave')return semChave();
+        const msg={limite:`Você chegou ao limite de ${e.limite||''} pedidos por dia. Amanhã libera de novo.`,sem_credito:'A conta da API da Anthropic está sem crédito. Um gestor precisa colocar crédito no Console da Anthropic.',
+          chave_invalida:'A chave da API da Anthropic foi recusada. Um gestor precisa conferir o secret ANTHROPIC_API_KEY no Supabase.',ocupado:'A IA está ocupada agora. Tente de novo em alguns segundos.',
+          modelo:'O modelo configurado não existe mais. Um gestor precisa ajustar o secret IA_MODELO no Supabase.',sem_permissao:'Seu login não tem permissão para usar o assistente.'}[e.erro]||'Não foi possível falar com a IA agora. Tente de novo.';
+        return aviso(`<div class="banner" style="display:block;margin:10px 0 0">${esc(msg)}</div>`);}
+      const leitor=r.body.getReader(),dec=new TextDecoder();let ult=0;
+      while(true){const{value,done}=await leitor.read();if(done)break;resp.content+=dec.decode(value,{stream:true});const ag=Date.now();if(ag-ult>120){ult=ag;pintar();}}
+      resp.fim=true;pintar();statusIA(true).then(mostrarUso);
+    }catch(err){console.error(err);if(!resp.content){conv.pop();conv.pop();$('#ia_q').value=texto;}else resp.fim=true;pintar();aviso('<div class="banner" style="display:block;margin:10px 0 0">A conexão caiu no meio da resposta. Confira a internet e tente de novo.</div>');}
+    finally{enviando=false;const b=$('#iaEnviar');if(b)b.disabled=false;}
+  };
+  const mostrarUso=info=>{const el=$('#iaUso');if(!el||!info||info.erro)return;el.textContent=info.chave?`Hoje: ${info.usadosHoje} de ${info.limite} pedidos`:'';};
+  sh.querySelectorAll('[data-iatar]').forEach(b=>b.onclick=()=>{const t=tarefas[+b.dataset.iatar];if(t[1])enviar(t[1]);else $('#ia_q').focus();});
+  $('#iaEnviar').onclick=()=>enviar($('#ia_q').value);
+  $('#ia_q').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();enviar($('#ia_q').value);}};
+  $('#ia_anon').onchange=()=>{try{localStorage.setItem('ia_anon',$('#ia_anon').checked?'1':'0');}catch(_){}};
   $('#iaX').onclick=closeForm;
-  $('#iaCopiar').onclick=()=>{copiarTexto(montar());toast('Pedido copiado. Cole no Claude ou em outro lugar.');};
-  $('#iaAbrir').onclick=()=>{const t=montar();copiarTexto(t);
-    const url=encodeURIComponent(t).length<7000?`${IA_URL}?q=${encodeURIComponent(t)}`:IA_URL;
-    window.open(url,'_blank','noopener');
-    toast(url===IA_URL?'Pedido copiado. No Claude, cole (Ctrl+V ou tocar e segurar › Colar) e envie.':'Abrindo o Claude. Se o texto não aparecer pronto, cole (Ctrl+V).',6000);};
+  sh.addEventListener('click',e=>{
+    const c=e.target.closest('[data-iacop]');if(c){copiarTexto(conv[+c.dataset.iacop].content);toast('Copiado.');return;}
+    const p=e.target.closest('[data-iapeca]');if(p&&typeof abrirPeca==='function'){const t=conv[+p.dataset.iapeca].content.replace(/^#{1,4}\s+/gm,'# ').replace(/\*\*(.+?)\*\*/g,'$1');
+      const cli=byId('clientes',clienteId)||byId('clientes',(byId('processos',processoId)||{}).clienteId);
+      abrirPeca(null,{titulo:'Rascunho da IA – '+((cli&&cli.nome)||titulo||''),html:textoParaHtml(t),clienteId:(cli&&cli.id)||clienteId,processoId});return;}
+    if(e.target.id==='iaFora'){const q=(conv.find(m=>m.role==='user')||{}).content||$('#ia_q').value||'';const t=`${IA_BASE()}\n\nTAREFA:\n${q}\n\nDADOS (copiados do sistema do escritório):\n${ctx()}`;copiarTexto(t);window.open(encodeURIComponent(t).length<7000?`${IA_URL}?q=${encodeURIComponent(t)}`:IA_URL,'_blank','noopener');toast('Pedido copiado. Se não aparecer pronto no Claude, cole (Ctrl+V).',6000);}
+  });
+  statusIA().then(info=>{if(info&&!info.erro&&!info.chave)semChave();mostrarUso(info);});
+  setTimeout(()=>{const q=$('#ia_q');if(q&&innerWidth>620)q.focus();},50);
 }
 function copiarTexto(t){
   try{if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).catch(()=>copiarAntigo(t));return;}}catch(_){}
@@ -130,14 +180,14 @@ async function iaIntimacao(hash){
   const it=S.intimacoes.find(x=>x.hash===hash);if(!it)return;
   if(it.texto===undefined&&typeof carregarTextos==='function')await carregarTextos([hash]);
   const p=S.processos.find(x=>digits(x.numero)&&digits(x.numero)===digits(it.numero));const c=p&&byId('clientes',p.clienteId);
-  abrirIA({titulo:`Publicação de ${fmtD(it.data_disponibilizacao)} · ${it.numero||''}`,tipo:'intimacao',contexto:ctxIntimacaoTxt(it),nomes:nomesDe(nomesDoTexto(it.partes),c&&c.nome)});
+  abrirIA({titulo:`Publicação de ${fmtD(it.data_disponibilizacao)} · ${it.numero||''}`,tipo:'intimacao',contexto:ctxIntimacaoTxt(it),nomes:nomesDe(nomesDoTexto(it.partes),c&&c.nome),clienteId:c?c.id:'',processoId:p?p.id:'',telefone:c?c.telefone:''});
 }
 async function iaProcesso(id){
   const p=byId('processos',id);if(!p)return;
   const hs=S.intimacoes.filter(i=>digits(i.numero)&&digits(i.numero)===digits(p.numero)).map(i=>i.hash);
   if(hs.length&&typeof carregarTextos==='function')await carregarTextos(hs.slice(0,8));
   const c=byId('clientes',p.clienteId);
-  abrirIA({titulo:`Processo ${p.numero||''}`,tipo:'processo',contexto:ctxProcessoTxt(p),nomes:nomesDe(c&&c.nome,p.reclamada)});
+  abrirIA({titulo:`Processo ${p.numero||''}`,tipo:'processo',contexto:ctxProcessoTxt(p),nomes:nomesDe(c&&c.nome,p.reclamada),clienteId:c?c.id:'',processoId:p.id,telefone:c?c.telefone:''});
 }
 function iaJuri(id){
   const j=byId('juri',id);if(!j)return;const pr=byId('processos',j.processoId),c=pr&&byId('clientes',pr.clienteId);
@@ -176,7 +226,7 @@ if(typeof painelJuri==='function'){
 
 /* ---------- página "Assistente IA" ---------- */
 VIEWS.assistente={t:'Assistente IA',
-  tools(){return `<div class="sub">Peça ajuda ao Claude com os dados do sistema já preenchidos. O pedido abre na sua conta do Claude; o sistema não envia nada sozinho.</div>`;},
+  tools(){return `<div class="sub">Converse com a IA aqui mesmo, com os dados do processo, da intimação ou do júri já incluídos. A IA pode errar: revise tudo antes de usar.</div>`;},
   body(){
     const procs=[...S.processos].sort((a,b)=>String((byId('clientes',a.clienteId)||{}).nome||'').localeCompare(String((byId('clientes',b.clienteId)||{}).nome||''),'pt-BR'));
     return `<div class="rgrid">
@@ -194,3 +244,16 @@ VIEWS.assistente={t:'Assistente IA',
     $('#iaIrProc').onclick=()=>{const v=$('#iaSelProc').value;if(!v)return toast('Escolha o processo.');iaProcesso(v);};
     $('#iaLivre').onclick=()=>abrirIA({titulo:'Pergunta livre',tipo:'livre',contexto:'(sem dados de processo)'});
   }};
+
+/* ---------- Saúde do sistema: assistente ligado? ---------- */
+(window.HOOKS_CARREGAR=window.HOOKS_CARREGAR||[]).push(async()=>{if(typeof ehGestor==='function'&&ehGestor())statusIA(true).catch(()=>{});});
+if(typeof itensSaude==='function'){
+  const _itensIA=itensSaude;
+  itensSaude=function(){
+    const it=_itensIA();const i=IA_ST.info;if(!i)return it;
+    if(i.erro)it.push({st:'warn',t:'Assistente de IA',d:'Não foi possível consultar o assistente agora.'});
+    else it.push(i.chave?{st:'ok',t:'Assistente de IA',d:`Ligado (modelo ${i.modelo}). Limite de ${i.limite} pedidos por pessoa por dia.`}
+      :{st:'warn',t:'Assistente de IA',d:'Ainda sem a chave da API da Anthropic. Veja o passo a passo, "Assistente de IA dentro do sistema".'});
+    return it;
+  };
+}

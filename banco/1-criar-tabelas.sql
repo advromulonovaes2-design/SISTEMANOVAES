@@ -535,6 +535,25 @@ revoke all on public.erros from anon;
 grant select, insert, delete on public.erros to authenticated;
 
 -- ---------------------------------------------------------------------
+-- Assistente de IA: registro de uso (quantos pedidos e tokens por pessoa)
+-- só a função "ia" grava; gestores leem para acompanhar o custo
+-- ---------------------------------------------------------------------
+create table if not exists public.ia_uso (
+  id             bigint generated always as identity primary key,
+  quando         timestamptz not null default now(),
+  email          text,
+  modelo         text,
+  tokens_entrada integer default 0,
+  tokens_saida   integer default 0
+);
+create index if not exists ia_uso_email_quando on public.ia_uso (email, quando);
+alter table public.ia_uso enable row level security;
+drop policy if exists ler on public.ia_uso;
+create policy ler on public.ia_uso for select to authenticated using (public.eh_gestor());
+revoke all on public.ia_uso from anon;
+grant select on public.ia_uso to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Envio de documentos pelo cliente (página pública com link)
 -- ---------------------------------------------------------------------
 create or replace function public.token_envio_valido(p text)

@@ -308,3 +308,15 @@ body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],bo
 .ia-tarefas{display:flex;gap:8px;flex-wrap:wrap}
 .ia-prev{margin-top:10px}.ia-prev>summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--muted)}
 .ia-txt{white-space:pre-wrap;font-size:12.5px;line-height:1.45;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:300px;overflow:auto;margin:8px 0 0}
+/* assistente de IA */
+.ia-conv{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.ia-msg{border-radius:12px;padding:10px 14px;font-size:14.5px;line-height:1.55;max-width:100%;overflow-wrap:anywhere}
+.ia-msg.eu{align-self:flex-end;background:var(--pri);color:var(--pri-ink,#F3EFE7);max-width:85%;white-space:pre-wrap}
+.ia-msg.ia{align-self:stretch;background:var(--surface);border:1px solid var(--line)}
+.ia-msg.ia p{margin:0 0 8px}.ia-msg.ia h4{margin:10px 0 6px;font-size:15px}.ia-msg.ia ul,.ia-msg.ia ol{margin:0 0 8px;padding-left:20px}
+.ia-msg.ia code{font-family:var(--f-mono,monospace);font-size:13px}
+.ia-acts{margin:6px 0 0!important}
+.ia-pf{flex-direction:column;align-items:stretch!important;gap:6px}
+.ia-entrada{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.ia-entrada textarea{resize:vertical;min-height:46px}
+.ia-rodape{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}

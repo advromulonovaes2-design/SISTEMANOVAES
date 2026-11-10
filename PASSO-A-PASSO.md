@@ -343,15 +343,28 @@ No cadastro do cliente, em **Checklist de documentos**, escolha **Qual caso voc�
 
 ---
 
-## Assistente de IA (Claude)
+## Assistente de IA dentro do sistema
 
-O sistema monta o pedido para a IA com os dados da tela e abre o Claude da sua conta. Não tem custo extra nem chave para configurar, e nada sai do sistema antes de você tocar em **Abrir no Claude**.
+O sistema tem um assistente de IA (o Claude, da Anthropic) que conversa **na própria tela**, já com os dados do processo, da intimação ou do caso do júri. Ele fica no botão **Perguntar à IA** de cada intimação, no cadastro do processo, no painel do júri, na aba Processos da OAB e na página **Assistente IA** do menu.
 
-- **Onde fica:** botão **Perguntar à IA** em cada intimação, no cadastro do processo, no painel de cada caso do Júri e na aba Processos da OAB. Também há a página **Assistente IA** no menu.
-- **Pedidos prontos:** resumir e dizer a providência, rascunhar manifestação ou petição, explicar ao cliente por WhatsApp, riscos do caso, revisar teses do júri, antecipar a acusação, perguntas às testemunhas, fala aos jurados, prioridades da carteira. Dá para editar o pedido ou escrever uma pergunta livre.
-- **Privacidade:** a opção **Trocar nomes por iniciais e esconder CPF/CNPJ** vem marcada. Em "Ver o texto que vai para a IA" você confere tudo antes de enviar. Senhas gov.br, CPF, RG e dados financeiros nunca entram no pedido.
-- **Como abre:** no computador, o Claude abre com o pedido pronto. Se o pedido for longo, ou no celular com o app do Claude, ele abre vazio: o pedido já está copiado, é só colar (Ctrl+V, ou tocar e segurar › Colar) e enviar.
-- **Atenção:** a IA pode errar e inventar artigos ou jurisprudência. Ela adianta o trabalho, mas o advogado revisa tudo. O prazo oficial continua sendo o do sistema, conferido por duas pessoas.
+**Custo:** a IA é cobrada por uso, direto pela Anthropic, com crédito pré-pago. Você coloca um valor, define um limite de gasto e acompanha o consumo no Console da Anthropic. Os preços de cada modelo estão em https://platform.claude.com/en/docs/about-claude/pricing.
+
+**Para ligar (uma vez só, um gestor):**
+1. Entre em **https://console.anthropic.com** e crie a conta do escritório.
+2. Em **Billing** (Cobrança), coloque crédito e, se quiser, defina um **limite de gasto mensal**.
+3. Em **API Keys**, clique em **Create Key**, dê o nome `sistema-escritorio` e copie a chave (começa com `sk-ant-`). Ela aparece uma vez só. **Não cole a chave no chat nem no WhatsApp.**
+4. No Supabase: **Edge Functions → Secrets → Add new secret**. Nome `ANTHROPIC_API_KEY`, valor: a chave. **Save**.
+5. Pronto: em Ajustes › Saúde do sistema aparece "Assistente de IA · Ligado".
+
+**Opcional (também em Edge Functions → Secrets):**
+- `IA_MODELO`: o modelo usado. O padrão é `claude-sonnet-5-5` (melhor para redação jurídica). Para gastar menos, use `claude-haiku-5-5`.
+- `IA_LIMITE_DIA`: quantos pedidos cada pessoa pode fazer por dia (padrão 60).
+
+**Como usar:** escolha um pedido pronto (resumir e dizer a providência, rascunhar petição, explicar ao cliente, revisar teses do júri…) ou escreva o seu, e continue a conversa com perguntas. Cada resposta tem os botões **Copiar**, **Salvar como petição** (abre no editor de petições, com a logo, para revisar) e **Mandar no WhatsApp** (para o telefone do cliente).
+
+**Privacidade:** a chave fica só no Supabase, nunca no navegador. A opção **Trocar nomes por iniciais e esconder CPF/CNPJ** vem marcada. Senhas gov.br, CPF, RG e valores nunca vão para a IA. Os gestores acompanham quantos pedidos cada pessoa faz.
+
+**Atenção:** a IA pode errar e inventar artigos ou jurisprudência. Ela adianta o trabalho, mas o advogado revisa tudo. O prazo oficial continua sendo o do sistema, conferido por duas pessoas. Sem a chave, o assistente oferece levar o pedido para o Claude da sua conta (cole com Ctrl+V).
 
 ---
 

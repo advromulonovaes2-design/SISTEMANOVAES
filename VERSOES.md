@@ -9,6 +9,11 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.6 · 10/11/2026
+
+- **Assistente de IA dentro do sistema**: conversa na própria tela, com resposta aparecendo aos poucos e perguntas de continuação; botões Copiar, Salvar como petição e Mandar no WhatsApp. Função `ia` no Supabase (secret `ANTHROPIC_API_KEY`; opcionais `IA_MODELO` e `IA_LIMITE_DIA`). Sem a chave, oferece levar o pedido ao Claude.
+- **Banco**: tabela `ia_uso` (quantos pedidos e tokens por pessoa; só gestores leem).
+
 ## Versão 3.5 · 10/11/2026
 
 - **Assistente de IA** (`ia.js`): botão "Perguntar à IA" em intimações, processos, júri e Processos da OAB, e página "Assistente IA". Monta o pedido com os dados da tela (com opção de trocar nomes por iniciais e esconder CPF/CNPJ), copia e abre o Claude da conta do advogado. Sem custo e sem chave de API.
