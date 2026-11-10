@@ -471,6 +471,45 @@ do $$ begin
   end if;
 end $$;
 
+-- data da audiência escrita de vários jeitos: 15/12/2026, 15.12.2026, 15-12-2026 ou "15 de dezembro de 2026"
+create or replace function public.extrair_data_audiencia(t text)
+returns text
+language plpgsql immutable
+as $$
+declare
+  a text; b text; la int; lb int; m text[];
+  meses constant text[] := array['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  mes int;
+begin
+  if t is null or t !~* 'audi[êe]ncia' then return null; end if;
+  a := substring(t from '(?i)(audi[êe]ncia.{0,220}?[0-9]{1,2}[/.-][0-9]{1,2}[/.-][0-9]{4})');
+  b := substring(t from '(?i)(audi[êe]ncia.{0,220}?[0-9]{1,2}º? de (?:janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro) de [0-9]{4})');
+  la := coalesce(length(a), 100000); lb := coalesce(length(b), 100000);
+  if a is not null and la <= lb then
+    m := regexp_match(a, '([0-9]{1,2})[/.-]([0-9]{1,2})[/.-]([0-9]{4})$');
+    if m is null or m[2]::int not between 1 and 12 or m[1]::int not between 1 and 31 then return null; end if;
+    return m[3] || '-' || lpad(m[2], 2, '0') || '-' || lpad(m[1], 2, '0');
+  elsif b is not null then
+    m := regexp_match(lower(b), '([0-9]{1,2})º? de ([a-zç]+) de ([0-9]{4})$');
+    if m is null then return null; end if;
+    mes := array_position(meses, replace(m[2], 'marco', 'março'));
+    if mes is null or m[1]::int not between 1 and 31 then return null; end if;
+    return m[3] || '-' || lpad(mes::text, 2, '0') || '-' || lpad(m[1], 2, '0');
+  end if;
+  return null;
+end $$;
+
+do $$ begin
+  -- troca a versão antiga da coluna (só entendia 15/12/2026)
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'intimacoes' and column_name = 'aud_data'
+             and coalesce(generation_expression, '') not like '%extrair_data_audiencia%') then
+    alter table public.intimacoes drop column aud_data;
+  end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'intimacoes' and column_name = 'aud_data') then
+    alter table public.intimacoes add column aud_data text generated always as (public.extrair_data_audiencia(texto)) stored;
+  end if;
+end $$;
+
 -- ---------------------------------------------------------------------
 -- Registro de erros: o que der errado na tela de alguém fica anotado
 -- para os gestores (Saúde do sistema) e para a manutenção

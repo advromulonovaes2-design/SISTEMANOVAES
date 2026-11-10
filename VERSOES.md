@@ -14,6 +14,8 @@ A versão em uso aparece em **Ajustes → Sobre**.
 **Banco** (rodar `banco/2-atualizacao.sql`)
 - Intimações ganham colunas calculadas pelo banco: `f_arq` (arquivamento), `f_sent` (sentença/recurso), `f_aud` (audiência) e `aud_data` (data da audiência no texto).
 - Tabela `erros` (registro de erros da tela; só gestores leem).
+- Função `extrair_data_audiencia`: entende a data da audiência como 15/12/2026, 15.12.2026, 15-12-2026 ou "15 de dezembro de 2026".
+- Já aplicado no Supabase do escritório em 10/11/2026.
 
 **Sistema**
 - Intimações carregam sem o texto das publicações (só as novas trazem texto); o resto vem quando você toca em "Mostrar o texto" ou "Ver publicações". A tela fica bem mais leve no celular.
