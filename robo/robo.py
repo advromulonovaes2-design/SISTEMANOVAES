@@ -782,7 +782,7 @@ def avisar_envios(equipe, processos, clientes, avisos):
 
 
 TABELAS_BACKUP = ["config", "acesso", "equipe", "clientes", "processos", "prazos", "tarefas", "honorarios", "documentos",
-                  "eventos", "juri", "modelos", "intimacoes", "movimentacoes", "envios", "envios_arquivos", "push", "historico"]
+                  "eventos", "juri", "modelos", "intimacoes", "movimentacoes", "envios", "envios_arquivos", "push", "historico", "acompanhamentos"]
 
 
 def ler_tudo(tabela):

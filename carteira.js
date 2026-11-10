@@ -33,17 +33,21 @@ function dataAudiencia(t){
   const m=String(t).match(/audi[êe]ncia[\s\S]{0,220}?(\d{2})\/(\d{2})\/(\d{4})/i);
   return m?`${m[3]}-${m[2]}-${m[1]}`:'';
 }
+// o banco já calcula f_arq, f_sent, f_aud e aud_data; sem eles (banco antigo ou demonstração) lê o texto
+const ehArq=it=>it.f_arq!==undefined?!!it.f_arq:(!RX_DOC_SENT.test(it.tipo_documento||'')&&RX_ARQ.test(it.texto||'')&&!RX_DESARQ.test(it.texto||''));
+const ehSent=it=>it.f_sent!==undefined?!!it.f_sent:(RX_DOC_SENT.test(it.tipo_documento||'')||RX_SENT.test(it.texto||''));
+const temAud=it=>it.f_aud!==undefined?!!it.f_aud:RX_AUD.test(textoDe(it));
 function analisar(g){
   const its=g.itens;const hoje=hojeStr();
   // situação: olha as publicações mais recentes primeiro
   let situacao='andamento';
   if(g.proc&&/arquiv|encerrad|baixad|extint/i.test(faseDe(g.proc)))situacao='arquivado';
-  else if(its.slice(0,2).some(it=>!RX_DOC_SENT.test(it.tipo_documento||'')&&RX_ARQ.test(it.texto||'')&&!RX_DESARQ.test(it.texto||'')))situacao='arquivado';
-  else if(its.slice(0,5).some(it=>RX_DOC_SENT.test(it.tipo_documento||'')||RX_SENT.test(it.texto||'')))situacao='sentenca';
+  else if(its.slice(0,2).some(ehArq))situacao='arquivado';
+  else if(its.slice(0,5).some(ehSent))situacao='sentenca';
   // audiência
   let audiencia='sem',audData='';
-  for(const it of its){const t=textoDe(it);if(!RX_AUD.test(t))continue;
-    const d=dataAudiencia(t);if(d&&d>=hoje){audiencia='marcada';audData=audData&&audData<d?audData:d;}
+  for(const it of its){if(!temAud(it))continue;
+    const d=it.f_aud!==undefined?(it.aud_data||''):dataAudiencia(textoDe(it));if(d&&d>=hoje){audiencia='marcada';audData=audData&&audData<d?audData:d;}
     else if(audiencia!=='marcada')audiencia='teve';}
   // tempo de processo pelo ano do número CNJ (NNNNNNN-DD.AAAA...)
   const ano=g.n.length===20?Number(g.n.slice(9,13)):0;const anoAtual=new Date().getFullYear();
@@ -135,7 +139,8 @@ async function marcarProcessos(nums,excluir){
     l.forEach(i=>i.status=st);}
   return true;
 }
-function verPublicacoes(n){
+async function verPublicacoes(n){
+  if(S.intLeve&&typeof carregarTextos==='function'){const hs=S.intimacoes.filter(i=>digits(i.numero)===n).map(i=>i.hash);toast('Carregando publicações…');await carregarTextos(hs);}
   const its=S.intimacoes.filter(i=>digits(i.numero)===n).sort((a,b)=>String(b.data_disponibilizacao).localeCompare(String(a.data_disponibilizacao)));if(!its.length)return;
   const sh=$('#sheet');SH={col:'__pubs'};
   sh.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="pbT" style="max-width:820px"><div class="ph"><h3 id="pbT" class="mono" style="font-size:16px">${esc(its[0].numero)}</h3><button class="btn ghost sm" id="pbX" type="button">Fechar</button></div>
@@ -179,3 +184,7 @@ document.addEventListener('click',async e=>{
   }
 });
 document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('cart-mais'))UI.cartAberto=e.target.open;},true);
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-inttxt]');if(!b)return;e.preventDefault();b.disabled=true;b.textContent='Carregando…';
+  if(await carregarTextos([b.dataset.inttxt]))body_();else{b.disabled=false;b.textContent='Não carregou. Tocar de novo';}
+});

@@ -46,14 +46,33 @@ const rowToRec=r=>({...(r.dados||{}),id:r.id,criadoEm:r.criado_em,atualizadoEm:r
 const limpa=rec=>{const o={...rec};delete o.id;delete o.criadoEm;delete o.atualizadoEm;return o;};
 
 async function carregar(t){const{data,error}=await sb.from(t).select('*');if(error){if(TABS_NOVAS.includes(t)&&/does not exist|42P01|PGRST205|schema cache/i.test((error.message||'')+' '+(error.code||''))){S[t]=[];S.faltaTabela=true;return;}throw error;}S[t]=data.map(rowToRec);}
-async function carregarIntimacoes(){
-  const cols='hash,origem,oab,cliente_id,responsavel_id,numero,tribunal,orgao,classe,tipo,tipo_documento,data_disponibilizacao,texto,link,partes,ultima_mov,ultima_mov_data,status,processo_id,criado_em';
+const INT_COLS='hash,origem,oab,cliente_id,responsavel_id,numero,tribunal,orgao,classe,tipo,tipo_documento,data_disponibilizacao,link,partes,ultima_mov,ultima_mov_data,status,processo_id,criado_em';
+async function lerIntimacoes(cols){
   let out=[];
   for(let ini=0;ini<5000;ini+=1000){ // o Supabase entrega no máximo 1000 por vez
     const{data,error}=await sb.from('intimacoes').select(cols).order('data_disponibilizacao',{ascending:false}).order('hash').range(ini,ini+999);
-    if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;
+    if(error)return{error};out=out.concat(data||[]);if(!data||data.length<1000)break;
   }
-  S.intimacoes=out;
+  return{data:out};
+}
+async function carregarIntimacoes(){
+  // versão leve: sem o texto das publicações (o banco já classifica arquivamento, sentença e audiência)
+  let r=await lerIntimacoes(INT_COLS+',f_arq,f_sent,f_aud,aud_data');
+  if(r.error){ // banco ainda sem a atualização: carrega do jeito antigo, com o texto
+    r=await lerIntimacoes(INT_COLS+',texto');if(r.error)throw r.error;S.intLeve=false;S.intimacoes=r.data;return;}
+  S.intLeve=true;
+  // o texto só das novas (é o que aparece na lista e sugere o prazo)
+  const novas=r.data.filter(i=>i.status==='nova').map(i=>i.hash);
+  const txt={};
+  for(let k=0;k<novas.length;k+=200){const{data}=await sb.from('intimacoes').select('hash,texto').in('hash',novas.slice(k,k+200));(data||[]).forEach(x=>txt[x.hash]=x.texto);}
+  r.data.forEach(i=>{if(i.hash in txt)i.texto=txt[i.hash];});
+  S.intimacoes=r.data;
+}
+async function carregarTextos(hashes){
+  const falta=hashes.filter(h=>{const i=S.intimacoes.find(x=>x.hash===h);return i&&i.texto===undefined;});
+  for(let k=0;k<falta.length;k+=200){const{data,error}=await sb.from('intimacoes').select('hash,texto').in('hash',falta.slice(k,k+200));if(error)return false;
+    (data||[]).forEach(x=>{const i=S.intimacoes.find(y=>y.hash===x.hash);if(i)i.texto=x.texto||'';});}
+  return true;
 }
 async function carregarTudo(){
   try{
@@ -352,6 +371,7 @@ function rowIntimacao(it){
       ${it.partes?`<div class="m">Partes: ${esc(it.partes)}</div>`:''}
       <div class="m">Encontrada pela ${it.origem==='nome'?'busca do cliente'+(cli?' '+esc(cli.nome):''):'OAB '+esc(it.oab||'')}${resp?' · '+esc(resp.nome):''}</div>
       ${it.ultima_mov?`<div class="mov"><b>Última movimentação</b>${esc(it.ultima_mov)}${it.ultima_mov_data?' — '+fmtDT(it.ultima_mov_data):''}</div>`:''}
+      ${it.texto===undefined?`<div><button class="lnk" type="button" data-inttxt="${esc(it.hash)}">Mostrar o texto da publicação</button></div>`:''}
       ${txt?`<div class="teor" data-teor-box><span>${esc(longo?txt.slice(0,320)+'…':txt)}</span><span hidden>${esc(txt)}</span>${longo?' <button class="lnk" data-teor type="button">Ler tudo</button>':''}</div>`:''}
       <div class="acts">${st==='nova'?`<button class="btn pri sm" data-cad="${esc(it.hash)}" type="button">${jaProc?'Lançar prazo':'Cadastrar'}</button><button class="btn sm" data-ign="${esc(it.hash)}" type="button">Ignorar</button>`:st==='ignorada'?`<button class="btn sm" data-reab="${esc(it.hash)}" type="button">Voltar para novas</button>`:''}${link?`<a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">Abrir no DJEN</a>`:''}</div>
     </div>

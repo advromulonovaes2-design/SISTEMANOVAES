@@ -84,6 +84,29 @@ end $$;
 with d as (delete from public.clientes where dados ->> 'nome' = 'Cliente da equipe' returning 1) select case when count(*) = 1
   then 'OK  gestor exclui' else public.teste_falhou('ERRO gestor não excluiu') end from d;
 
+
+-- ===================== INTIMAÇÕES (classificação) E REGISTRO DE ERROS =====================
+insert into public.intimacoes(hash, numero, tipo_documento, texto) values
+  ('cl1', '1', 'Despacho', 'Certificado o trânsito, arquivem-se os autos.'),
+  ('cl2', '2', 'Sentença', 'Julgo procedente. Após o trânsito em julgado, arquive-se.'),
+  ('cl3', '3', 'Decisão', 'Redesigno a audiência para às 10h do dia 15/12/2026.');
+select case when (select f_arq from public.intimacoes where hash = 'cl1') and not (select f_arq from public.intimacoes where hash = 'cl2')
+  then 'OK  arquivamento lido do texto (sentença com "arquive-se" não conta)' else public.teste_falhou('ERRO classificação de arquivamento') end;
+select case when (select f_sent from public.intimacoes where hash = 'cl2') then 'OK  sentença reconhecida' else public.teste_falhou('ERRO sentença') end;
+select case when (select aud_data from public.intimacoes where hash = 'cl3') = '2026-12-15'
+  then 'OK  data da audiência lida do texto' else public.teste_falhou('ERRO data da audiência') end;
+set role authenticated;
+select set_config('request.jwt.claims', '{"email":"equipe@x.com","sub":"00000000-0000-0000-0000-000000000003","aal":"aal1"}', false);
+insert into public.erros(usuario, mensagem) values ('equipe@x.com', 'teste');
+select case when (select count(*) from public.erros) = 0 then 'OK  equipe anota erro mas não lê a lista' else public.teste_falhou('ERRO equipe leu erros') end;
+do $$ begin
+  insert into public.erros(usuario, mensagem) values ('outra@x.com', 'falso');
+  raise exception 'ERRO anotou erro em nome de outra pessoa';
+exception when insufficient_privilege then raise notice 'OK  ninguém anota erro em nome de outro'; end $$;
+select set_config('request.jwt.claims', '{"email":"gestor1@x.com","sub":"00000000-0000-0000-0000-000000000001","aal":"aal1"}', false);
+select case when (select count(*) from public.erros) = 1 then 'OK  gestor lê os erros' else public.teste_falhou('ERRO gestor não leu erros') end;
+reset role;
+
 -- ===================== PÁGINA PÚBLICA DO CLIENTE =====================
 reset role;
 set role anon;

@@ -335,6 +335,10 @@ No cadastro do cliente, em **Checklist de documentos**, escolha **Qual caso voc�
 - A cada mudança no GitHub, o arquivo `.github/workflows/testes.yml` testa o código, os cálculos de prazo e Pix e as regras do banco. Se algo quebrar, aparece um X vermelho no GitHub e chega e-mail. O site continua no ar; o teste serve de alarme.
 - Para fazer o teste na hora: GitHub › Actions › **Testes do sistema** › Run workflow.
 
+**Registro de erros**: se algo der errado na tela de alguém (inclusive ao salvar), o sistema anota sozinho. Os gestores veem em Ajustes › Saúde do sistema › "Erros na tela da equipe", e a lista ajuda a manutenção a corrigir. Ninguém precisa mandar print.
+
+**Intimações mais leves**: a lista não baixa mais o texto de todas as publicações (só das novas). Para ler as outras, toque em "Mostrar o texto da publicação" ou em "Ver publicações" na aba Processos da OAB.
+
 **Espaço no banco grátis**: comunicações antigas do DJEN agora são guardadas sem a cópia completa, o que deixa as buscas de 2 anos bem mais leves.
 
 ---

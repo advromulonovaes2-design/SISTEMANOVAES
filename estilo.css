@@ -303,3 +303,5 @@ body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],bo
 .cart-mais>summary::before{content:"▸ "}
 .cart-mais[open]>summary::before{content:"▾ "}
 @media (max-width:620px){.cart-resumo{display:grid;grid-template-columns:1fr 1fr}.cart-chip{flex-direction:column;align-items:flex-start;gap:0;text-align:left}}
+.erros-lista{margin-top:10px}
+.erros-lista>summary{cursor:pointer;font-weight:600;font-size:14px;padding:4px 0}

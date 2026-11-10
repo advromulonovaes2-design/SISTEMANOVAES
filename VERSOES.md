@@ -9,6 +9,19 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.4 · 10/11/2026
+
+**Banco** (rodar `banco/2-atualizacao.sql`)
+- Intimações ganham colunas calculadas pelo banco: `f_arq` (arquivamento), `f_sent` (sentença/recurso), `f_aud` (audiência) e `aud_data` (data da audiência no texto).
+- Tabela `erros` (registro de erros da tela; só gestores leem).
+
+**Sistema**
+- Intimações carregam sem o texto das publicações (só as novas trazem texto); o resto vem quando você toca em "Mostrar o texto" ou "Ver publicações". A tela fica bem mais leve no celular.
+- Registro de erros (`erros.js`): erros da tela e ao gravar ficam anotados e aparecem na Saúde do sistema.
+
+**Robô**
+- Cópia de segurança testada de verdade: `backups/backup-2026-11-10.json.gz` (0,8 MB) guardada no Supabase. A cópia passa a incluir os links de acompanhamento.
+
 ## Versão 3.3 · 10/11/2026
 
 - Aba **Processos da OAB** reorganizada (`carteira.js`): grupos por matéria, situação (andamento, sentença/recurso, arquivado), audiência (marcada com data, já teve, sem) e tempo de processo; filtros, ordem e contadores no topo; ver todas as publicações do processo.

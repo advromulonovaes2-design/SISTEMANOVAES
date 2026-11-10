@@ -451,6 +451,51 @@ $$;
 grant execute on function public.acompanhamento_info(uuid) to anon, authenticated;
 
 -- ---------------------------------------------------------------------
+-- Intimações mais leves: classificação calculada pelo próprio banco
+-- (o sistema não precisa baixar o texto de todas as publicações)
+-- ---------------------------------------------------------------------
+do $$ begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'intimacoes' and column_name = 'f_arq') then
+    alter table public.intimacoes
+      add column f_arq boolean generated always as (
+        coalesce(tipo_documento, '') !~* '(senten|ac[óo]rd|ementa)'
+        and coalesce(texto, '') ~* '(arquivamento definitivo|determino o arquivamento|arquivem-se|arquive-se|ao arquivo|autos arquivados|processo arquivado|baixa definitiva|baixem os autos)'
+        and coalesce(texto, '') !~* 'desarquiv') stored,
+      add column f_sent boolean generated always as (
+        coalesce(tipo_documento, '') ~* '(senten|ac[óo]rd|ementa)'
+        or coalesce(texto, '') ~* '(julgo (im)?procedente|julgo parcialmente|extingo o processo|recurso inominado|contrarraz|recurso de apela[çc][ãa]o|recurso ordin[áa]rio)') stored,
+      add column f_aud boolean generated always as (
+        (coalesce(tipo, '') || ' ' || coalesce(tipo_documento, '') || ' ' || coalesce(texto, '')) ~* 'audi[êe]ncia') stored,
+      add column aud_data text generated always as (
+        regexp_replace(substring(coalesce(texto, '') from 'audi[êe]ncia.{0,220}?([0-9]{2}/[0-9]{2}/[0-9]{4})'), '([0-9]{2})/([0-9]{2})/([0-9]{4})', '\3-\2-\1')) stored;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Registro de erros: o que der errado na tela de alguém fica anotado
+-- para os gestores (Saúde do sistema) e para a manutenção
+-- ---------------------------------------------------------------------
+create table if not exists public.erros (
+  id       bigint generated always as identity primary key,
+  quando   timestamptz not null default now(),
+  usuario  text,
+  versao   text,
+  tela     text,
+  mensagem text,
+  detalhe  text,
+  agente   text
+);
+alter table public.erros enable row level security;
+drop policy if exists anotar on public.erros;
+drop policy if exists ler on public.erros;
+drop policy if exists limpar on public.erros;
+create policy anotar on public.erros for insert to authenticated with check (public.autorizado() and lower(coalesce(usuario, '')) = lower(coalesce(auth.jwt() ->> 'email', '')));
+create policy ler on public.erros for select to authenticated using (public.eh_gestor());
+create policy limpar on public.erros for delete to authenticated using (public.eh_gestor());
+revoke all on public.erros from anon;
+grant select, insert, delete on public.erros to authenticated;
+
+-- ---------------------------------------------------------------------
 -- Envio de documentos pelo cliente (página pública com link)
 -- ---------------------------------------------------------------------
 create or replace function public.token_envio_valido(p text)
