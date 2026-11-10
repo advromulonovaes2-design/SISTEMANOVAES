@@ -18,7 +18,7 @@ const iniciais=n=>String(n||'?').trim().split(/\s+/).filter(Boolean).slice(0,2).
 const uid=()=>(crypto.randomUUID?crypto.randomUUID():'10000000-1000-4000-8000-100000000000'.replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16)));
 const digits=s=>String(s||'').replace(/\D/g,'');
 const brl=n=>(Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}).replace(/\u00a0/g,' ');
-function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3200);}
+function toast(msg,ms){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,ms||3200);}
 const areaCls=a=>a==='Previdenciário'?'prev':a==='Criminal'?'crim':a==='Trabalhista'?'trab':'adm';
 const areaChip=a=>a?`<span class="chip c-${areaCls(a)}">${esc(a)}</span>`:'';
 const vazio=(titulo,texto,col,btn)=>`<div class="empty"><b>${titulo}</b><span>${texto}</span>${col?`<button class="btn pri" data-new="${col}" type="button">${btn}</button>`:''}</div>`;
@@ -373,7 +373,7 @@ function rowIntimacao(it){
       ${it.ultima_mov?`<div class="mov"><b>Última movimentação</b>${esc(it.ultima_mov)}${it.ultima_mov_data?' — '+fmtDT(it.ultima_mov_data):''}</div>`:''}
       ${it.texto===undefined?`<div><button class="lnk" type="button" data-inttxt="${esc(it.hash)}">Mostrar o texto da publicação</button></div>`:''}
       ${txt?`<div class="teor" data-teor-box><span>${esc(longo?txt.slice(0,320)+'…':txt)}</span><span hidden>${esc(txt)}</span>${longo?' <button class="lnk" data-teor type="button">Ler tudo</button>':''}</div>`:''}
-      <div class="acts">${st==='nova'?`<button class="btn pri sm" data-cad="${esc(it.hash)}" type="button">${jaProc?'Lançar prazo':'Cadastrar'}</button><button class="btn sm" data-ign="${esc(it.hash)}" type="button">Ignorar</button>`:st==='ignorada'?`<button class="btn sm" data-reab="${esc(it.hash)}" type="button">Voltar para novas</button>`:''}${link?`<a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">Abrir no DJEN</a>`:''}</div>
+      <div class="acts">${st==='nova'?`<button class="btn pri sm" data-cad="${esc(it.hash)}" type="button">${jaProc?'Lançar prazo':'Cadastrar'}</button><button class="btn sm" data-ign="${esc(it.hash)}" type="button">Ignorar</button>`:st==='ignorada'?`<button class="btn sm" data-reab="${esc(it.hash)}" type="button">Voltar para novas</button>`:''}${link?`<a class="btn sm ghost" href="${esc(link)}" target="_blank" rel="noopener">Abrir no DJEN</a>`:''}<button class="btn sm ghost" type="button" data-iaint="${esc(it.hash)}">Perguntar à IA</button></div>
     </div>
   </div>`;
 }
@@ -861,7 +861,7 @@ function openMais(){
   const ic=id=>document.querySelector(`#nav [data-v="${id}"] svg`)?.outerHTML||'';
   const it=(v,l)=>`<a href="#${v}" data-close>${ic(v)}${l}</a>`;
   sh.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="mT"><div class="ph"><h3 id="mT">Mais</h3><button class="btn ghost sm" id="mX" type="button">Fechar</button></div>
-  <div class="pb"><div class="maisgrid">${it('tarefas','Tarefas')}${it('processos','Processos')}${it('juri','Júri')}${it('previdenciario','Previdenciário')}${ehGestor()?it('financeiro','Financeiro'):''}${it('documentos','Documentos')}${it('equipe','Equipe')}${ehGestor()?it('acessos','Acessos')+it('relatorios','Relatórios')+it('historico','Histórico'):''}<a href="#" data-cfg>${ic('inicio')}Ajustes</a></div></div></div>`;
+  <div class="pb"><div class="maisgrid">${it('tarefas','Tarefas')}${it('processos','Processos')}${it('juri','Júri')}${it('previdenciario','Previdenciário')}${ehGestor()?it('financeiro','Financeiro'):''}${it('documentos','Documentos')}${it('assistente','Assistente IA')}${it('equipe','Equipe')}${ehGestor()?it('acessos','Acessos')+it('relatorios','Relatórios')+it('historico','Histórico'):''}<a href="#" data-cfg>${ic('inicio')}Ajustes</a></div></div></div>`;
   sh.hidden=false;$('#mX').onclick=closeForm;
 }
 

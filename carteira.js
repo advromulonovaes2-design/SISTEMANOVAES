@@ -99,6 +99,7 @@ function processosDaOab(){
   <div class="cart-acoes"><span class="hint">${l.length} de ${base.length} ${base.length===1?'processo':'processos'}${CART.excluidos?' excluídos da lista':''}. A matéria, a situação e a audiência são lidas do texto das publicações: confira antes de decidir.</span>
     ${(CART.materia||CART.situacao||CART.audiencia||CART.tempo||CART.oab)?'<button class="btn sm ghost" type="button" id="cartLimpar">Limpar filtros</button>':''}
     ${!CART.excluidos&&arquivadosVisiveis.length?`<button class="btn sm danger" type="button" id="cartExclArq">${arquivadosVisiveis.length===1?'Excluir da lista o arquivado':`Excluir da lista os ${arquivadosVisiveis.length} arquivados`}</button>`:''}
+    ${!CART.excluidos&&base.length?'<button class="btn sm" type="button" id="iaCart">Perguntar à IA sobre a lista</button>':''}
     <label class="chk"><input type="checkbox" id="cartExcl" ${CART.excluidos?'checked':''}>Ver excluídos (${todos.filter(g=>g.excluido).length})</label></div>`;
   const topo=`<div class="carteira">${resumo}${filtros}`;
   if(!base.length)return topo+vazio(CART.excluidos?'Nenhum processo excluído':'Nenhum processo ainda',CART.excluidos?'Os processos que você excluir da lista aparecem aqui e podem voltar.':'Faça uma busca de "Último ano" ou "Últimos 2 anos" para listar os processos da OAB.')+'</div>';

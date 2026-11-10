@@ -9,6 +9,10 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.5 · 10/11/2026
+
+- **Assistente de IA** (`ia.js`): botão "Perguntar à IA" em intimações, processos, júri e Processos da OAB, e página "Assistente IA". Monta o pedido com os dados da tela (com opção de trocar nomes por iniciais e esconder CPF/CNPJ), copia e abre o Claude da conta do advogado. Sem custo e sem chave de API.
+
 ## Versão 3.4 · 10/11/2026
 
 **Banco** (rodar `banco/2-atualizacao.sql`)

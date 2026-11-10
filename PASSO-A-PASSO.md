@@ -343,6 +343,18 @@ No cadastro do cliente, em **Checklist de documentos**, escolha **Qual caso voc�
 
 ---
 
+## Assistente de IA (Claude)
+
+O sistema monta o pedido para a IA com os dados da tela e abre o Claude da sua conta. Não tem custo extra nem chave para configurar, e nada sai do sistema antes de você tocar em **Abrir no Claude**.
+
+- **Onde fica:** botão **Perguntar à IA** em cada intimação, no cadastro do processo, no painel de cada caso do Júri e na aba Processos da OAB. Também há a página **Assistente IA** no menu.
+- **Pedidos prontos:** resumir e dizer a providência, rascunhar manifestação ou petição, explicar ao cliente por WhatsApp, riscos do caso, revisar teses do júri, antecipar a acusação, perguntas às testemunhas, fala aos jurados, prioridades da carteira. Dá para editar o pedido ou escrever uma pergunta livre.
+- **Privacidade:** a opção **Trocar nomes por iniciais e esconder CPF/CNPJ** vem marcada. Em "Ver o texto que vai para a IA" você confere tudo antes de enviar. Senhas gov.br, CPF, RG e dados financeiros nunca entram no pedido.
+- **Como abre:** no computador, o Claude abre com o pedido pronto. Se o pedido for longo, ou no celular com o app do Claude, ele abre vazio: o pedido já está copiado, é só colar (Ctrl+V, ou tocar e segurar › Colar) e enviar.
+- **Atenção:** a IA pode errar e inventar artigos ou jurisprudência. Ela adianta o trabalho, mas o advogado revisa tudo. O prazo oficial continua sendo o do sistema, conferido por duas pessoas.
+
+---
+
 ## Se algo der errado
 
 - **O robô mostra erro 403 no DJEN**: o DJEN recusa servidores fora do Brasil, e o GitHub roda nos EUA. Por isso o robô consulta o DJEN pela função `djen` do Supabase, que roda em São Paulo (o relatório mostra "consultando pela ponte do Supabase em São Paulo"). Se a ponte falhar, confira se a função `djen` aparece em Supabase › Edge Functions. Plano B: rodar o robô num computador no Brasil (Python instalado, `robo/robo.py` e `robo/rodar-no-windows.exemplo.bat` preenchido, com `set DJEN_DIRETO=1`, agendado no Agendador de Tarefas do Windows). Não suba o `.bat` preenchido para o GitHub.
