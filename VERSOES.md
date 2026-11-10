@@ -9,6 +9,11 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.3 · 10/11/2026
+
+- Aba **Processos da OAB** reorganizada (`carteira.js`): grupos por matéria, situação (andamento, sentença/recurso, arquivado), audiência (marcada com data, já teve, sem) e tempo de processo; filtros, ordem e contadores no topo; ver todas as publicações do processo.
+- **Excluir da lista** um processo ou todos os arquivados de uma vez (status `excluida`, reversível em "Ver excluídos"; volta sozinho se houver publicação nova).
+
 ## Versão 3.2 · 09/11/2026
 
 **Banco** (rodar `banco/2-atualizacao.sql`)

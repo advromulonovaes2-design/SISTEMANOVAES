@@ -153,7 +153,14 @@ O robô manda o aviso para o celular de cada responsável junto com os outros ca
 Além das buscas automáticas (segunda a sexta, 7h e 16h), a aba **Intimações** tem o botão **Buscar agora**: ele pede ao robô uma busca no DJEN na hora, sem mandar avisos por Telegram, e-mail ou WhatsApp.
 - Antes de tocar, escolha a **OAB** (ou "Todas as OABs") e o **período**: recentes (3 dias), 30 dias, 90 dias, 1 ano ou 2 anos. Quanto maior o período, mais demora (de 1 minuto a uns 20).
 - Comunicações dos últimos 7 dias entram em **Novas**. As mais antigas entram como **antigas**, para não lotar a lista.
-- A aba **Processos da OAB** mostra um cartão por processo encontrado, com quantas publicações teve e a última data, e o botão **Cadastrar processo** para os que ainda não estão no sistema. O DJEN só traz processos que tiveram alguma publicação no período escolhido: para montar a carteira, faça uma busca de "Últimos 2 anos" por OAB.
+- A aba **Processos da OAB** mostra um cartão por processo encontrado, organizado:
+  - **por matéria** (Criminal, Previdenciário, Trabalhista, Família, Cível, Fazenda Pública), em grupos que abrem e fecham;
+  - **por situação**: em andamento, sentença ou recurso, arquivado ou encerrado (os números no topo filtram com um toque);
+  - **por audiência**: marcada (com a data), já teve ou sem audiência;
+  - **por tempo de processo** (ano do número CNJ) e há quanto tempo não tem publicação.
+  Matéria, situação e audiência são lidas do texto das publicações: são uma ajuda, confira antes de decidir. **Ver publicações** mostra todas as publicações daquele processo.
+- **Excluir da lista**: em cada cartão, ou **Excluir da lista os arquivados** de uma vez. Isso só tira o processo desta lista (não apaga nada no tribunal nem no sistema). Ele fica em **Ver excluídos** e pode voltar. Se o processo tiver publicação nova depois, ele volta sozinho.
+- **Cadastrar processo** leva o processo para o sistema; os já cadastrados mostram **Abrir processo**.
 
 Para ligar o botão (uma vez só), o GitHub precisa de um token que só sabe rodar o robô:
 1. No GitHub, clique na sua foto → **Settings** → no fim do menu, **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.

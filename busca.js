@@ -80,48 +80,7 @@ VIEWS.intimacoes.tools=function(){
 };
 VIEWS.intimacoes.bind=function(){if(BIND_INT)BIND_INT();$('#btnBuscar').onclick=buscarAgora;pintarBusca();};
 
-/* ---------- aba "Processos da OAB": um cartão por processo achado no DJEN ---------- */
-UI.procOab=UI.procOab||'';UI.procSo=UI.procSo??true;
-function processosDaOab(){
-  const grupos=new Map();
-  for(const it of S.intimacoes){const n=digits(it.numero);if(n.length<15)continue;
-    if(UI.procOab&&String(it.oab||'').replace(/\s+/g,' ').replace(/ 0+/,' ')!==UI.procOab)continue;
-    const g=grupos.get(n)||{n,itens:[],oabs:new Set()};g.itens.push(it);if(it.oab)g.oabs.add(it.oab);grupos.set(n,g);}
-  const porNum=new Map(S.processos.map(p=>[digits(p.numero),p]).filter(([k])=>k));
-  let l=[...grupos.values()].map(g=>{g.itens.sort((a,b)=>String(b.data_disponibilizacao).localeCompare(String(a.data_disponibilizacao)));g.ult=g.itens[0];g.proc=porNum.get(g.n);return g;});
-  const total=l.length,falta=l.filter(g=>!g.proc).length;
-  if(UI.procSo)l=l.filter(g=>!g.proc);
-  l.sort((a,b)=>(!!a.proc-!!b.proc)||String(b.ult.data_disponibilizacao).localeCompare(String(a.ult.data_disponibilizacao)));
-  const oabs=oabsDaEquipe();
-  const topo=`<div class="tools" style="margin-bottom:12px"><select class="input" id="procOab" aria-label="Filtrar por OAB" style="max-width:220px"><option value="">Todas as OABs</option>${oabs.map(o=>`<option value="${esc(o.oab)}" ${o.oab===UI.procOab?'selected':''}>${esc(o.oab)} · ${esc(o.nome.split(' ')[0])}</option>`).join('')}</select><label class="chk"><input type="checkbox" id="procSo" ${UI.procSo?'checked':''}>Só os que ainda não estão cadastrados</label></div>
-    <p class="hint" style="margin:0 0 12px">${total} ${total===1?'processo aparece':'processos aparecem'} nas comunicações do DJEN já buscadas · <b>${falta}</b> ainda não ${falta===1?'está cadastrado':'estão cadastrados'} no sistema. Para trazer processos mais antigos, escolha "Último ano" ou "Últimos 2 anos" e toque em Buscar agora. O DJEN só mostra processos que tiveram alguma publicação no período.</p>`;
-  if(!l.length)return topo+vazio(total?'Todos já estão cadastrados':'Nenhum processo ainda',total?'Desmarque o filtro para ver todos.':'Faça uma busca com um período maior para listar os processos da OAB.');
-  const mostra=l.slice(0,300);
-  return topo+`<div class="list">${mostra.map(g=>{const it=g.ult,area=guessArea(it);
-    return `<div class="row a-${areaCls(area)}"><div class="main">
-      <div class="chips">${g.proc?'<span class="chip c-ok">Já cadastrado</span>':'<span class="chip c-warn">Não cadastrado</span>'}${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${area!=='Outro'?areaChip(area):''}</div>
-      <div class="t mono">${esc(it.numero)}</div>
-      <div class="m">${esc(it.classe||'')}${it.orgao?(it.classe?' · ':'')+esc(it.orgao):''}</div>
-      ${it.partes?`<div class="m">Partes: ${esc(String(it.partes).slice(0,220))}</div>`:''}
-      <div class="m">${g.itens.length} ${g.itens.length===1?'comunicação':'comunicações'} · última em ${fmtDS(it.data_disponibilizacao)}${g.oabs.size?' · OAB '+esc([...g.oabs].join(', ')):''}</div>
-      <div class="acts">${g.proc?`<button class="btn sm" type="button" data-edit="processos" data-id="${esc(g.proc.id)}">Abrir processo</button>`:`<button class="btn sm pri" type="button" data-cadproc="${esc(g.n)}">Cadastrar processo</button>`}</div>
-    </div></div>`;}).join('')}</div>${l.length>300?`<p class="hint">Mostrando 300 de ${l.length}. Use o filtro de OAB para ver os demais.</p>`:''}`;
-}
-function cadastrarProcessoDaOab(n){
-  const its=S.intimacoes.filter(i=>digits(i.numero)===n).sort((a,b)=>String(b.data_disponibilizacao).localeCompare(String(a.data_disponibilizacao)));const it=its[0];if(!it)return;
-  const resp=byId('equipe',it.responsavel_id),cli=byId('clientes',it.cliente_id);
-  openForm('processos',null,{numero:it.numero||'',tribunal:it.tribunal||'',vara:it.orgao||'',area:guessArea(it),responsavelId:resp?resp.id:'',clienteId:cli?cli.id:''},async novoId=>{
-    const antigas=its.filter(i=>i.status==='antiga').map(i=>i.hash);
-    for(let k=0;k<antigas.length;k+=100){await sb.from('intimacoes').update({status:'cadastrada',processo_id:novoId}).in('hash',antigas.slice(k,k+100));}
-    await carregarIntimacoes().catch(()=>{});body_();
-    toast(its.some(i=>i.status==='nova')?'Processo cadastrado. As intimações novas dele continuam em "Novas" para você lançar o prazo.':'Processo cadastrado.');
-  });
-}
-document.addEventListener('change',e=>{
-  if(e.target.id==='procOab'){UI.procOab=e.target.value;body_();}
-  if(e.target.id==='procSo'){UI.procSo=e.target.checked;body_();}
-});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-cadproc]');if(b){e.preventDefault();cadastrarProcessoDaOab(b.dataset.cadproc);}});
+/* a aba "Processos da OAB" fica em carteira.js */
 /* a lista de OABs depende da Equipe, que pode carregar depois da tela */
 function preencherOabsBusca(){
   const s=$('#buscaOab');if(!s)return;const oabs=oabsDaEquipe();if(s.options.length-1===oabs.length)return;

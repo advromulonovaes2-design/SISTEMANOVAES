@@ -345,7 +345,7 @@ function rowIntimacao(it){
   return `<div class="row a-${areaCls(area)} ${st==='nova'?'':'soft'}">
     ${st==='nova'?`<label class="selint" title="Selecionar"><input type="checkbox" data-selint="${esc(it.hash)}" ${UI.selInt&&UI.selInt.has(it.hash)?'checked':''} aria-label="Selecionar intimação"></label>`:''}
     <div class="main">
-      <div class="chips"><span class="chip ${st==='nova'?'c-warn':st==='cadastrada'?'c-ok':'c-mute'}">${st==='nova'?'Nova':st==='cadastrada'?'Cadastrada':st==='antiga'?'Antiga':'Ignorada'}</span>${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${it.tipo_documento||it.tipo?`<span class="chip c-mute">${esc(it.tipo_documento||it.tipo)}</span>`:''}${area!=='Outro'?areaChip(area):''}${jaProc?'<span class="chip c-ok">Processo já cadastrado</span>':''}</div>
+      <div class="chips"><span class="chip ${st==='nova'?'c-warn':st==='cadastrada'?'c-ok':'c-mute'}">${st==='nova'?'Nova':st==='cadastrada'?'Cadastrada':st==='antiga'?'Antiga':st==='excluida'?'Excluída':'Ignorada'}</span>${it.tribunal?`<span class="chip c-mute">${esc(it.tribunal)}</span>`:''}${it.tipo_documento||it.tipo?`<span class="chip c-mute">${esc(it.tipo_documento||it.tipo)}</span>`:''}${area!=='Outro'?areaChip(area):''}${jaProc?'<span class="chip c-ok">Processo já cadastrado</span>':''}</div>
       <div class="t mono">${esc(it.numero||'Sem número')}</div>
       <div class="m">Disponibilizada em ${fmtDS(it.data_disponibilizacao)}${it.orgao?' · '+esc(it.orgao):''}</div>
       ${it.classe?`<div class="m">${esc(it.classe)}</div>`:''}
@@ -402,7 +402,7 @@ VIEWS.intimacoes={t:'Intimações',
     document.querySelectorAll('#segInt button').forEach(x=>x.classList.toggle('on',x.dataset.f===UI.intF));
     if(UI.intF==='processos'&&typeof processosDaOab==='function')return processosDaOab();
     const norm=o=>String(o||'').toUpperCase().replace(/\s+/g,' ').replace(/ 0+(\d)/,' $1');
-    const l=S.intimacoes.filter(i=>UI.intF==='todas'||(i.status||'nova')===UI.intF)
+    const l=S.intimacoes.filter(i=>UI.intF==='todas'?i.status!=='excluida':(i.status||'nova')===UI.intF)
       .filter(i=>!UI.intOab||norm(i.oab)===UI.intOab).filter(i=>!UI.intResp||i.responsavel_id===UI.intResp).slice(0,400);
     const oabs=[...new Set(S.intimacoes.map(i=>norm(i.oab)).filter(Boolean))].sort();
     const sel=UI.selInt||(UI.selInt=new Set());[...sel].forEach(h=>{if(!l.some(i=>i.hash===h&&(i.status||'nova')==='nova'))sel.delete(h);});
