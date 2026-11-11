@@ -28,6 +28,7 @@ import os
 import re
 import smtplib
 import ssl
+import subprocess
 import sys
 import time
 import urllib.error
@@ -673,6 +674,140 @@ def buscar_intimacoes(equipe, clientes, processos, avisos):
     return len(novas)
 
 
+# ---------------------------------------------------------------- lançamentos automáticos (conferir)
+import automatico as AUTO  # noqa: E402  (robo/automatico.py)
+
+MAX_FEITOS = 800
+
+
+def calcular_vencimentos(prazos, cfg):
+    """Usa o mesmo cálculo da tela (calc.js) pelo Node. Sem Node, deixa vazio: a tela calcula ao abrir."""
+    if not prazos:
+        return []
+    try:
+        r = subprocess.run(["node", os.path.join(os.path.dirname(os.path.abspath(__file__)), "vencimento.js")],
+                           input=json.dumps({"feriados": cfg.get("feriados") or "", "suspensoes": cfg.get("suspensoes") or [],
+                                             "prazos": prazos}), capture_output=True, text=True, timeout=30)
+        v = json.loads(r.stdout or "[]")
+        return v if len(v) == len(prazos) else [""] * len(prazos)
+    except Exception as e:
+        log(f"Vencimento automático: não consegui calcular ({e}); a tela calcula quando abrirem o prazo.")
+        return [""] * len(prazos)
+
+
+def lancamentos_automaticos(processos, clientes, avisos):
+    """Lança sozinho audiências/perícias e prazos reconhecíveis das intimações, marcados para conferir."""
+    feitos_p = list(ANTERIOR.get("autoPrazos") or [])
+    feitos_e = list(ANTERIOR.get("autoEventos") or [])
+    ja_p, ja_e = set(feitos_p), set(feitos_e)
+    por_num = {digitos(p.get("numero")): p for p in processos if digitos(p.get("numero"))}
+    clis = {c["id"]: c for c in clientes}
+    cfg = (sb("GET", "config", params={"select": "dados", "id": "eq.geral"}) or [{}])
+    cfg = (cfg[0] if cfg else {}).get("dados") or {}
+    prazos = registros("prazos")
+    eventos = registros("eventos")
+    campos = "hash,numero,tribunal,orgao,classe,tipo_documento,data_disponibilizacao,texto,responsavel_id,cliente_id,processo_id,status"
+    corte = (HOJE - timedelta(days=DIAS_RECENTE)).isoformat()
+    recentes = sb("GET", "intimacoes", params={"select": campos, "status": "eq.nova", "data_disponibilizacao": f"gte.{corte}"}) or []
+    com_aud = sb("GET", "intimacoes", params={"select": campos, "aud_data": f"gte.{HOJE.isoformat()}",
+                                               "status": "not.in.(excluida,ignorada)"}) or []
+
+    def cliente_de(it, pr):
+        c = clis.get((pr or {}).get("clienteId")) or clis.get(it.get("cliente_id")) or {}
+        return c.get("nome") or ""
+
+    # ---- prazos
+    novos_p, chaves = [], set()
+    for it in recentes:
+        h = it["hash"]
+        if h in ja_p:
+            continue
+        ja_p.add(h); feitos_p.append(h)
+        pr = por_num.get(digitos(it.get("numero")))
+        regra = AUTO.classificar_prazo(it, pr)
+        if not regra:
+            continue
+        pid = (pr or {}).get("id") or ""
+        chave = (digitos(it.get("numero")), it.get("data_disponibilizacao"), regra["descricao"])
+        repetido = chave in chaves or any(
+            p.get("intimacaoHash") == h
+            or (p.get("dataInicio") == it.get("data_disponibilizacao") and not p.get("cumprido")
+                and ((pid and p.get("processoId") == pid) or (digitos(p.get("numero")) and digitos(p.get("numero")) == chave[0])))
+            for p in prazos)
+        if repetido:
+            continue
+        chaves.add(chave)
+        area = AUTO.area_de(it, pr)
+        resp = it.get("responsavel_id") or (pr or {}).get("responsavelId") or ""
+        num = it.get("numero") or ""
+        novos_p.append({
+            "descricao": regra["descricao"] + ("" if pid else f" · {num}"),
+            "processoId": pid, "numero": num, "gatilho": "djen", "dataInicio": it.get("data_disponibilizacao") or "",
+            "dias": regra["dias"], "contagem": regra["contagem"], "justica": AUTO.justica_de(it.get("tribunal")),
+            "tribunal": it.get("tribunal") or "", "reuPreso": bool(area == "Criminal" and (pr or {}).get("reuPreso")),
+            "responsavelId": resp, "cumprido": False, "auto": True, "intimacaoHash": h, "criadoPor": "robô",
+            "conferidoPor": "", "conferidoEm": "",
+            "obs": (f"Lançado automaticamente pelo robô em {br(HOJE)} a partir da intimação do DJEN de "
+                    f"{br(it.get('data_disponibilizacao')) if it.get('data_disponibilizacao') else '?'} ({it.get('tribunal')} {num}). "
+                    f"Dias: {regra['dias']} {'corridos' if regra['contagem'] == 'corridos' else 'úteis'}, {regra['base']}. "
+                    "CONFIRA se o prazo é do escritório, a data e os dias antes de conferir."
+                    + ("" if pid else " O processo ainda não está cadastrado: cadastre e ligue este prazo a ele.")
+                    + "\n\nIntimação: " + re.sub(r"\s+", " ", it.get("texto") or "")[:700]),
+            "_cli": cliente_de(it, pr),
+        })
+    vencs = calcular_vencimentos([{k: p[k] for k in ("dataInicio", "dias", "contagem", "justica", "gatilho", "tribunal", "reuPreso")}
+                                  for p in novos_p], cfg)
+    for p, v in zip(novos_p, vencs):
+        p["vencimento"] = v
+        cli = p.pop("_cli")
+        sb("POST", "prazos", [{"dados": p}], prefer="return=minimal")
+        quando = f"vence {br(v)}" if v else "abra para ver o vencimento"
+        avisos[p["responsavelId"] or "_geral"].append(("auto", f"• PRAZO: {p['descricao']} — {quando} ({p['dias']} dias "
+                                                       f"{'corridos' if p['contagem'] == 'corridos' else 'úteis'})\n  "
+                                                       f"{p['numero']}{' — ' + cli if cli else ''}"))
+    # ---- audiências, perícias e plenários
+    novos_e, chaves_e = 0, set()
+    for it in com_aud:
+        h = it["hash"]
+        if h in ja_e:
+            continue
+        ja_e.add(h); feitos_e.append(h)
+        c = AUTO.extrair_compromisso(it.get("texto"), HOJE)
+        if not c:
+            continue
+        pr = por_num.get(digitos(it.get("numero")))
+        pid = (pr or {}).get("id") or ""
+        n20 = digitos(it.get("numero"))
+        chave = (n20, c["data"])
+        if chave in chaves_e or any(
+                e.get("intimacaoHash") == h or (e.get("data") == c["data"] and (
+                    (pid and e.get("processoId") == pid) or (n20 and n20 in digitos(f"{e.get('titulo')} {e.get('descricao')} {e.get('numero')}"))))
+                for e in eventos):
+            continue
+        chaves_e.add(chave)
+        cli = cliente_de(it, pr)
+        resp = it.get("responsavel_id") or (pr or {}).get("responsavelId") or ""
+        num = it.get("numero") or ""
+        ev = {"titulo": f"{c['tipo']} — {cli or num}", "tipo": c["tipo"], "data": c["data"], "hora": c["hora"],
+              "modalidade": c["modalidade"], "local": it.get("orgao") or "", "link": c["link"], "linkInfo": c["linkInfo"],
+              "processoId": pid, "responsavelId": resp, "numero": num, "concluido": False,
+              "auto": True, "conferir": True, "intimacaoHash": h,
+              "descricao": (f"Cadastrado automaticamente pelo robô a partir da intimação do DJEN de "
+                            f"{br(it.get('data_disponibilizacao')) if it.get('data_disponibilizacao') else '?'} ({it.get('tribunal')} {num}). "
+                            "CONFIRA a data, a hora, o formato e o link. Ao salvar este compromisso, ele deixa de pedir conferência.")}
+        sb("POST", "eventos", [{"dados": ev}], prefer="return=minimal")
+        novos_e += 1
+        avisos[resp or "_geral"].append(("auto", f"• {c['tipo'].upper()} em {br(date.fromisoformat(c['data']))}"
+                                                 f"{' às ' + c['hora'] if c['hora'] else ''}"
+                                                 f"{' (' + c['modalidade'].split(' ')[0].lower() + ')' if c['modalidade'] else ''}"
+                                                 f"\n  {num}{' — ' + cli if cli else ''}"
+                                                 f"{chr(10) + '  Link: ' + c['link'] if c['link'] else ''}"))
+    STATUS["autoPrazos"] = feitos_p[-MAX_FEITOS:]
+    STATUS["autoEventos"] = feitos_e[-MAX_FEITOS:]
+    STATUS["autoLancados"] = {"prazos": len(novos_p), "compromissos": novos_e}
+    log(f"Lançamentos automáticos: {len(novos_p)} prazo(s) e {novos_e} compromisso(s) para conferir.")
+
+
 def atualizar_movimentacoes(processos, avisos):
     try:
         atuais = {m["numero"]: m for m in (sb("GET", "movimentacoes", params={"select": "*"}) or [])}
@@ -908,6 +1043,7 @@ def fazer_backup():
 
 def montar_mensagem(itens):
     blocos = []
+    au = [x[1] for x in itens if isinstance(x, tuple) and x[0] == "auto"]
     pz = sorted([x[1] for x in itens if isinstance(x, tuple) and x[0] == "prazo"])
     if pz:
         blocos.append("PRAZOS\n" + "\n".join(t for _, t in pz))
@@ -926,6 +1062,8 @@ def montar_mensagem(itens):
     fn = sorted([x[1] for x in itens if isinstance(x, tuple) and x[0] == "fin"])
     if fn:
         blocos.append("HONORÁRIOS A RECEBER\n" + "\n".join(t for _, t in fn))
+    if au:
+        blocos.insert(0, "LANÇADOS AUTOMATICAMENTE — CONFIRA NO SISTEMA\n" + "\n".join(au))
     soltos = [x for x in itens if isinstance(x, str)]
     if soltos:
         blocos.append("\n".join(soltos))
@@ -1007,6 +1145,10 @@ def main():
     except Exception as e:
         STATUS["djen"] = f"erro: {e}"
         log(f"Busca no DJEN: erro {e}")
+    try:
+        lancamentos_automaticos(processos, clientes, avisos)
+    except Exception as e:
+        log(f"Lançamentos automáticos: erro {e}")
     atualizar_movimentacoes(processos, avisos)
     if MODO == "busca":  # botão "Buscar agora": quem apertou está olhando a tela, então não manda avisos
         registrar_status(equipe)

@@ -9,6 +9,14 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.9 · 11/11/2026
+
+- **Lançamentos automáticos pelo robô** (`robo/automatico.py`): ao ler as intimações, o robô cadastra sozinho as **audiências, perícias e plenários** com data futura (data, hora, formato e link da sala) e os **prazos reconhecíveis**: contestação (cível), resposta à acusação, réplica, alegações finais, contrarrazões, recurso contra sentença e qualquer prazo escrito na intimação ("no prazo de 5 dias"). Tudo entra marcado como **lançado pelo robô — conferir** e o aviso do dia traz o bloco "LANÇADOS AUTOMATICAMENTE — CONFIRA NO SISTEMA".
+- O vencimento é calculado com o mesmo cálculo da tela (`robo/vencimento.js` usa o `calc.js`).
+- Não lança contestação na Justiça do Trabalho e nos Juizados (é na audiência) nem quando a citação é do INSS ou da União. Não repete o que já foi lançado (nem se a pessoa apagar).
+- Na tela: selo "Lançado pelo robô" no prazo; a intimação mostra o que já foi lançado; "Cadastrar" abre o prazo do robô para conferir; o compromisso deixa de pedir conferência quando alguém salva; o Assistente lista o que falta conferir.
+- Testes: `robo/teste_automatico.py` e o vencimento conferido no GitHub a cada mudança.
+
 ## Versão 3.8 · 11/11/2026
 
 - **Assistente de organização** (`organiza.js`), grátis e sem IA: a página **Assistente** mostra o que precisa de atenção (prazos vencidos, sem data, sem responsável ou sem conferência; intimações novas; audiências virtuais sem link; tarefas atrasadas) e o que arrumar nos cadastros (processos sem cliente, número ou responsável; duplicados; clientes sem telefone ou CPF; processos da OAB não cadastrados; quem não recebe avisos). Cada item abre o cadastro ou a tela certa. Faixa no Início com a contagem.

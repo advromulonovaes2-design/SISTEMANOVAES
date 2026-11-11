@@ -29,9 +29,9 @@ function itensOrganizacao(){
   const semData=ab.filter(x=>!x.i.r);
   if(semData.length)add('hoje','warn','Prazos sem data de vencimento',`${plural(semData.length,'prazo está','prazos estão')} sem data, então o robô não consegue avisar. Abra e informe a data e os dias.`,exP(semData),{rot:'Ver prazos',ir:irPrazos()});
   if(typeof precisaConferir==='function'){
-    const nc=S.prazos.filter(precisaConferir);
+    const nc=S.prazos.filter(p=>precisaConferir(p)&&!p.auto);
     if(nc.length)add('hoje','warn','Prazos sem a segunda conferência',`${plural(nc.length,'prazo aberto ainda não foi conferido','prazos abertos ainda não foram conferidos')} por outra pessoa. Quem não lançou toca em "Conferir".`,nc.slice(0,5).map(p=>({edit:'prazos',id:p.id,label:rotPrazo(p)})),{rot:'Ver prazos',ir:irPrazos()});
-    else if(ab.length)add('hoje','ok','Conferência de prazos','Todos os prazos abertos foram conferidos.');
+    else if(ab.length&&!S.prazos.some(precisaConferir))add('hoje','ok','Conferência de prazos','Todos os prazos abertos foram conferidos.');
   }
   const semResp=ab.filter(x=>!x.p.responsavelId);
   if(semResp.length)add('hoje','warn','Prazos sem responsável',`${plural(semResp.length,'prazo não tem','prazos não têm')} responsável: o aviso do robô não chega a ninguém em especial.`,exP(semResp),{rot:'Ver prazos',ir:irPrazos()});
@@ -158,5 +158,62 @@ if(VIEWS.inicio&&VIEWS.inicio.body){
     try{const it=itensOrganizacao().filter(x=>x.st!=='ok');n=it.length;u=it.filter(x=>x.st==='bad').length;}catch(_){}
     if(!n)return h;
     return `<a class="banner orgban" href="#assistente" style="display:block;text-decoration:none;margin-bottom:12px"><b>Assistente:</b> ${plural(n,'coisa precisa','coisas precisam')} de atenção${u?` (${plural(u,'urgente','urgentes')})`:''}. Toque para ver.</a>`+h;
+  };
+}
+
+/* =====================================================================
+   Lançamentos automáticos do robô (audiências e prazos lidos das
+   intimações): ficam marcados para conferir
+   ===================================================================== */
+const prazoAutoDe=hash=>S.prazos.find(p=>p.intimacaoHash===hash);
+const eventoAutoDe=hash=>(S.eventos||[]).find(e=>e.intimacaoHash===hash);
+
+// prazo: selo "Lançado pelo robô" enquanto ninguém conferiu
+if(typeof chipConferencia==='function'){
+  const _chip=chipConferencia;
+  chipConferencia=function(p){const c=_chip(p);return p.auto&&!p.cumprido&&!p.conferidoPor?'<span class="chip c-warn" title="O robô leu a intimação e lançou este prazo. Confira a data e os dias.">Lançado pelo robô</span>'+c:c;};
+}
+// compromisso: ao salvar, a pessoa conferiu
+if(FORMS.eventos){
+  const _bsEv=FORMS.eventos.beforeSave;
+  FORMS.eventos.beforeSave=function(v,id){const r=_bsEv?_bsEv.call(this,v,id):undefined;if(r===false)return false;const old=id?byId('eventos',id):null;if(old&&old.conferir){v.conferir=false;v.conferidoPor=meuEmail();}return r;};
+}
+// intimação: mostra o que o robô já lançou
+if(typeof rowIntimacao==='function'){
+  const _rowInt=rowIntimacao;
+  rowIntimacao=function(it){
+    const h=_rowInt(it),p=prazoAutoDe(it.hash),e=eventoAutoDe(it.hash);if(!p&&!e)return h;
+    const ch=(p?`<span class="chip ${p.conferidoPor||p.cumprido?'c-ok':'c-warn'}">Prazo lançado: ${esc(String(p.descricao||'').split(' · ')[0])}${p.vencimento?' · '+fmtD(p.vencimento):''}</span>`:'')
+      +(e?`<span class="chip ${e.conferir?'c-warn':'c-ok'}">${esc(e.tipo||'Compromisso')} na agenda · ${fmtD(e.data)}</span>`:'');
+    return h.replace('<div class="chips">','<div class="chips">'+ch);
+  };
+}
+// "Cadastrar" numa intimação que já tem prazo lançado pelo robô: abre esse prazo para conferir
+if(typeof cadastrarIntimacao==='function'){
+  const _cadInt=cadastrarIntimacao;
+  cadastrarIntimacao=function(hash){
+    const p=prazoAutoDe(hash);if(!p)return _cadInt(hash);
+    const it=S.intimacoes.find(x=>x.hash===hash)||{};
+    const fim=async()=>{await mudarIntimacao(hash,{status:'cadastrada',processo_id:p.processoId||null});};
+    const abrir=()=>{openForm('prazos',p.id,null,async()=>{await fim();toast('Prazo salvo e intimação cadastrada.');});setTimeout(()=>toast('O robô já lançou este prazo. Confira a data e os dias, salve e depois toque em "Conferir".',6000),300);};
+    if(p.processoId&&byId('processos',p.processoId))return abrir();
+    const existente=S.processos.find(x=>digits(x.numero)&&digits(x.numero)===digits(it.numero||p.numero));
+    const ligar=async pid=>{const novo=await salvar('prazos',p.id,{...p,processoId:pid,descricao:String(p.descricao||'').split(' · ')[0]});if(novo)Object.assign(p,{processoId:pid});abrir();};
+    if(existente)return ligar(existente.id);
+    const resp=byId('equipe',it.responsavel_id),cli=byId('clientes',it.cliente_id);
+    openForm('processos',null,{numero:it.numero||p.numero||'',tribunal:it.tribunal||'',vara:it.orgao||'',area:guessArea(it),responsavelId:resp?resp.id:'',clienteId:cli?cli.id:''},
+      novoId=>{toast('Processo salvo. Agora confira o prazo que o robô lançou.');setTimeout(()=>ligar(novoId),150);});
+  };
+}
+// Assistente: compromissos lançados pelo robô para conferir
+{
+  const _itOrg=itensOrganizacao;
+  itensOrganizacao=function(){
+    const it=_itOrg(),hoje=hojeStr();
+    const ev=(S.eventos||[]).filter(e=>e.conferir&&!e.concluido&&(e.data||'')>=hoje).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+    if(ev.length)it.unshift({grupo:'hoje',st:'warn',t:'Audiências e perícias lançadas pelo robô',d:`${plural(ev.length,'compromisso foi cadastrado','compromissos foram cadastrados')} automaticamente a partir das intimações. Abra, confira data, hora e link, e salve.`,ex:ev.slice(0,5).map(e=>({edit:'eventos',id:e.id,label:`${e.tipo} · ${fmtD(e.data)}${e.hora?' '+e.hora:''} · ${String(e.titulo||'').split(' — ')[1]||''}`})),acao:null});
+    const pa=S.prazos.filter(p=>p.auto&&!p.cumprido&&!p.conferidoPor);
+    if(pa.length)it.unshift({grupo:'hoje',st:'warn',t:'Prazos lançados pelo robô',d:`${plural(pa.length,'prazo foi lançado','prazos foram lançados')} automaticamente. Confira se é do escritório, a data e os dias, e toque em "Conferir".`,ex:pa.slice(0,5).map(p=>({edit:'prazos',id:p.id,label:`${p.descricao||'Prazo'}${p.vencimento?' — vence '+fmtD(p.vencimento):''}`})),acao:{rot:'Ver prazos',ir:()=>{UI.prazoF='abertos';UI.resp='';go('prazos');}}});
+    return it;
   };
 }
