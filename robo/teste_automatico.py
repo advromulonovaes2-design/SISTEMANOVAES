@@ -55,6 +55,12 @@ p = classificar_prazo({**civ, "texto": "Intime-se a parte autora para emendar a 
 confere("emenda à inicial", (p["descricao"], p["dias"]), ("Emenda à inicial", 15))
 p = classificar_prazo({"tribunal": "TRT8", "orgao": "7ª Vara do Trabalho", "tipo_documento": "Sentença", "texto": "Ante o exposto, julgo procedentes os pedidos."})
 confere("sentença trabalhista: RO 8 úteis", (p["dias"], p["contagem"]), (8, "uteis"))
+p = classificar_prazo({"tribunal": "TJPA", "orgao": "10ª Vara do Juizado Especial Cível", "tipo_documento": "Sentença",
+                       "texto": "SENTENÇA ... Interposto recurso, intime-se a parte contrária para contrarrazões em 10 dias."})
+confere("sentença no JEC com menção a contrarrazões: recurso inominado", (p["descricao"], p["dias"]),
+        ("Avaliar recurso contra a sentença (recurso inominado)", 10))
+c = extrair_compromisso("Audiência designada para 20/12/2026 às 10h, de forma virtual. Consulte em http://pje-consultas.tjpa.jus.br/pje-1g-consultas/x", HOJE)
+confere("link de consulta do processo não vira link da sala", c["link"], "")
 confere("ato sem prazo não lança", classificar_prazo({**civ, "texto": "Junte-se. Aguarde-se o retorno do AR."}), None)
 confere("dias por extenso", dias_no_texto("no prazo de quinze dias")[0], 15)
 

@@ -75,7 +75,10 @@ def classificar_prazo(intimacao, processo=None):
     corr = "corridos" if crim else "uteis"
     regra = None
 
-    if re.search(r"resposta (escrita )?a acusacao|responder a acusacao|art(igo)?\.? ?396", t):
+    sentenca = "sentenc" in tipo_doc or bool(re.search(r"\bjulgo (im)?procedente|julgo parcialmente procedente|ante o exposto,? julgo|extingo o processo", t))
+    if sentenca and "sentenc" in tipo_doc:
+        regra = None  # resolvido abaixo: numa sentença, "contrarrazões" ou "alegações" no texto são só menções
+    elif re.search(r"resposta (escrita )?a acusacao|responder a acusacao|art(igo)?\.? ?396", t):
         regra = ("Resposta à acusação", 10, "corridos", "CPP, art. 396")
     elif (re.search(r"contestacao|contestar|apresentar defesa|oferecer defesa|apresentar resposta", t)
           and re.search(r"citacao|cite-se|citad[oa]|fica citad|para,? querendo,? contestar", t)
@@ -89,7 +92,7 @@ def classificar_prazo(intimacao, processo=None):
     elif re.search(r"contrarrazoes|contra-razoes", t):
         regra = (("Contrarrazões", 8, "corridos", "CPP, art. 600") if crim else ("Contrarrazões", 8, "uteis", "CLT, art. 900") if trab
                  else ("Contrarrazões", 10, "uteis", "Lei 9.099/95, art. 42") if jui else ("Contrarrazões", 15, "uteis", "CPC, art. 1.010"))
-    elif "sentenc" in tipo_doc or re.search(r"\bjulgo (im)?procedente|julgo parcialmente procedente|ante o exposto,? julgo|extingo o processo", t):
+    if regra is None and sentenca:
         regra = (("Avaliar recurso contra a sentença (apelação)", 5, "corridos", "CPP, art. 593") if crim
                  else ("Avaliar recurso contra a sentença (recurso ordinário)", 8, "uteis", "CLT, art. 895") if trab
                  else ("Avaliar recurso contra a sentença (recurso inominado)", 10, "uteis", "Lei 9.099/95, art. 42") if jui
@@ -161,9 +164,10 @@ def extrair_compromisso(texto, hoje=None):
     link = ""
     urls = re.findall(r"https?://[^\s<>\"')\]]+", str(texto or ""))
     urls = [u.rstrip(".,;:") for u in urls]
-    pref = [u for u in urls if re.search(r"zoom|teams|meet\.google|webex|jitsi|balcao|sala|video|audiencia", u, re.I)]
-    if pref or (urls and virtual):
-        link = (pref or urls)[0]
+    pref = [u for u in urls if re.search(r"zoom\.us|teams\.microsoft|teams\.live|meet\.google|webex|jitsi|balcao|salavirtual|sala-virtual|videoconf|audienciavirtual", u, re.I)
+            and not re.search(r"consulta|visualizacao|/pje", u, re.I)]
+    if pref:
+        link = pref[0]
     info = []
     orig = re.sub(r"\s+", " ", sem_acento(texto))  # mantém maiúsculas (a senha da sala diferencia)
     mi = re.search(r"id da reuni[aã]o:?\s*([\d ]{9,15}\d)", orig, re.I)
