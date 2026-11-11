@@ -997,7 +997,7 @@ def main():
                           f"Olá, {m.get('nome', '').split(' ')[0]}! Se você recebeu esta mensagem, "
                           "os avisos de prazo e intimação vão chegar por aqui.")
             log(f"  {m.get('nome', '?')}: {'enviado' if ok else 'NÃO enviado'} "
-                f"({', '.join(canais) or 'nenhum canal cadastrado na Equipe'})")
+                f"(canais tentados: {', '.join(canais) or 'nenhum canal cadastrado na Equipe'})")
         log(f"Resultado do teste: {dict(ENVIADOS)}")
         registrar_status(equipe)
         return
