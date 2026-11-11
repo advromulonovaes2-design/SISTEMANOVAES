@@ -56,12 +56,15 @@ async function ativarPushAqui(){
   try{
     const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
     if(sub){const atual=sub.options&&sub.options.applicationServerKey?b64u(sub.options.applicationServerKey):'';if(atual&&atual!==pub){await sub.unsubscribe();sub=null;}}
-    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(pub)});
+    const assinar=()=>reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(pub)});
+    if(!sub){try{sub=await assinar();}catch(e1){ /* o Android às vezes falha na 1ª tentativa: limpa e tenta de novo */
+      try{const v=await reg.pushManager.getSubscription();if(v)await v.unsubscribe();}catch(_){}
+      await new Promise(r=>setTimeout(r,1500));sub=await assinar();}}
     const membro=S.equipe.find(m=>String(m.email||'').toLowerCase()===String(me.email||'').toLowerCase());
     const{error}=await sb.from('push').upsert({endpoint:sub.endpoint,email:me.email,membro_id:membro?membro.id:null,assinatura:sub.toJSON(),aparelho:nomeAparelho()});
     if(error)throw error;
     toast('Pronto! Este aparelho vai receber os avisos.');
-  }catch(e){console.error(e);toast('Não foi possível ativar: '+(e.message||'erro'));}
+  }catch(e){console.error(e);const m=String(e.message||'');toast(/push service|Registration failed/i.test(m)?'O serviço de notificações do Google não aceitou este aparelho (comum em Xiaomi ou navegador sem os serviços do Google). Os avisos continuam chegando pelo Telegram e pelo e-mail.':'Não foi possível ativar: '+(m||'erro'),9000);}
   renderPushAjustes();
 }
 async function desativarPushAqui(){

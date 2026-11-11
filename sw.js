@@ -1,6 +1,6 @@
 // Permite instalar o sistema no celular e abrir a tela mesmo com internet fraca.
 // Sempre tenta a versão mais nova primeiro; os dados do escritório nunca ficam guardados aqui.
-const CACHE = 'banca-v14';
+const CACHE = 'banca-v15';
 const BASE = ['./', './index.html', './estilo.css', './calc.js', './app.js', './modulos.js', './editor.js', './agenda.js', './juri.js', './prev.js', './cofre.js', './imagem.js', './seguranca.js', './envios.js', './extras.js', './pecas.js', './aovivo.js', './relatorios.js', './papeis.js', './busca.js', './carteira.js', './ia.js', './erros.js', './conferencia.js', './saude.js', './agendalink.js', './acompanha.js', './datajud.js', './lib/pdf-lib.min.js', './config.js', './manifest.webmanifest', './icone-192.png', './icone-512.png', './marca.png', './logo-documento.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASE)).catch(() => {})); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x))))); self.clients.claim(); });
