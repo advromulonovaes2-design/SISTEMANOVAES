@@ -9,6 +9,12 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.8 · 11/11/2026
+
+- **Assistente de organização** (`organiza.js`), grátis e sem IA: a página **Assistente** mostra o que precisa de atenção (prazos vencidos, sem data, sem responsável ou sem conferência; intimações novas; audiências virtuais sem link; tarefas atrasadas) e o que arrumar nos cadastros (processos sem cliente, número ou responsável; duplicados; clientes sem telefone ou CPF; processos da OAB não cadastrados; quem não recebe avisos). Cada item abre o cadastro ou a tela certa. Faixa no Início com a contagem.
+- **Como faço…?**: respostas prontas sobre o uso do sistema, com busca.
+- A IA (opcional) fica no fim da página do Assistente.
+
 ## Versão 3.7 · 11/11/2026
 
 - **Acessos**: botão **Excluir solicitação** para quem criou conta e não foi aprovado (função `excluir-solicitacao` no Supabase; só gestores; não apaga quem está liberado).

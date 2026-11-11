@@ -31,7 +31,7 @@ function copiar(txt){
 }
 
 /* ---------- dados ---------- */
-const VERSAO='3.7 · 11/11/2026';
+const VERSAO='3.8 · 11/11/2026';
 let PAPEL='equipe';const ehGestor=()=>PAPEL==='gestor';
 const SO_GESTOR=['financeiro','relatorios','historico','acessos'];
 const TABS=['equipe','clientes','processos','prazos','tarefas','honorarios','documentos','eventos','juri','modelos'];
@@ -861,7 +861,7 @@ function openMais(){
   const ic=id=>document.querySelector(`#nav [data-v="${id}"] svg`)?.outerHTML||'';
   const it=(v,l)=>`<a href="#${v}" data-close>${ic(v)}${l}</a>`;
   sh.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="mT"><div class="ph"><h3 id="mT">Mais</h3><button class="btn ghost sm" id="mX" type="button">Fechar</button></div>
-  <div class="pb"><div class="maisgrid">${it('tarefas','Tarefas')}${it('processos','Processos')}${it('juri','Júri')}${it('previdenciario','Previdenciário')}${ehGestor()?it('financeiro','Financeiro'):''}${it('documentos','Documentos')}${it('assistente','Assistente IA')}${it('equipe','Equipe')}${ehGestor()?it('acessos','Acessos')+it('relatorios','Relatórios')+it('historico','Histórico'):''}<a href="#" data-cfg>${ic('inicio')}Ajustes</a></div></div></div>`;
+  <div class="pb"><div class="maisgrid">${it('tarefas','Tarefas')}${it('processos','Processos')}${it('juri','Júri')}${it('previdenciario','Previdenciário')}${ehGestor()?it('financeiro','Financeiro'):''}${it('documentos','Documentos')}${it('assistente','Assistente')}${it('equipe','Equipe')}${ehGestor()?it('acessos','Acessos')+it('relatorios','Relatórios')+it('historico','Histórico'):''}<a href="#" data-cfg>${ic('inicio')}Ajustes</a></div></div></div>`;
   sh.hidden=false;$('#mX').onclick=closeForm;
 }
 

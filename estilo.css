@@ -320,3 +320,11 @@ body.equipe #nav [data-v="financeiro"],body.equipe #nav [data-v="relatorios"],bo
 .ia-entrada{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .ia-entrada textarea{resize:vertical;min-height:46px}
 .ia-rodape{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* assistente de organização */
+.orgh{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#667085);margin:14px 0 6px}
+.orgex{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.orgex a{font-size:13px;color:inherit;text-decoration:underline;text-underline-offset:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+details.cf{border-top:1px solid var(--line);padding:8px 0}
+details.cf summary{cursor:pointer;font-weight:600}
+details.cf p{margin:6px 0 0;line-height:1.5}
