@@ -329,14 +329,51 @@ def tg(chat, texto):
              {"chat_id": chat, "text": texto[i:i + 3900], "disable_web_page_preview": True}, tentativas=2)
 
 
+def _smtp_enviar(s, para, msg):
+    etapa = "login"
+    try:
+        s.ehlo()
+        s.login(GM_USER, GM_PASS)
+        etapa = "envio"
+        s.sendmail(GM_USER, [para], msg.as_string())
+    except smtplib.SMTPAuthenticationError as e:
+        raise RuntimeError(f"o Gmail recusou o login ({e.smtp_code}): confira GMAIL_USER e a senha de app") from e
+    except smtplib.SMTPServerDisconnected as e:
+        raise RuntimeError(f"o Gmail fechou a conexão na etapa de {etapa}") from e
+
+
 def email(para, assunto, texto):
     msg = MIMEText(texto, "plain", "utf-8")
     msg["Subject"] = assunto
     msg["From"] = formataddr(("Robô do escritório", GM_USER))
     msg["To"] = para
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context(), timeout=30) as s:
-        s.login(GM_USER, GM_PASS)
-        s.sendmail(GM_USER, [para], msg.as_string())
+    erros = []
+    # tenta a porta 465 (SSL) e, se o Gmail fechar a conexão, a 587 (STARTTLS)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context(), timeout=30) as s:
+            return _smtp_enviar(s, para, msg)
+    except RuntimeError as e:
+        if "recusou o login" in str(e):
+            raise
+        erros.append(f"465: {e}")
+    except (OSError, smtplib.SMTPException) as e:
+        erros.append(f"465: {type(e).__name__}: {e}")
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as s:
+            s.ehlo()
+            s.starttls(context=ssl.create_default_context())
+            return _smtp_enviar(s, para, msg)
+    except (OSError, smtplib.SMTPException, RuntimeError) as e:
+        erros.append(f"587: {type(e).__name__}: {e}")
+    raise RuntimeError(" | ".join(erros))
+
+
+def diagnostico_gmail():
+    u = GM_USER
+    log(f"Gmail: usuário {'parece um e-mail' if re.fullmatch(r'[^@\s]+@[^@\s]+\.[a-z]{2,}', u, re.I) else 'NÃO parece um e-mail'}"
+        f"{' do Gmail' if u.lower().endswith(('@gmail.com', '@googlemail.com')) else ' (não termina em @gmail.com)'} · "
+        f"senha de app com {len(GM_PASS)} caracteres{' (o certo são 16)' if len(GM_PASS) != 16 else ''}"
+        f"{' · a senha tem caracteres que não são letras' if GM_PASS and not GM_PASS.isalpha() else ''}")
 
 
 def whatsapp(fone, chave, texto):
@@ -951,6 +988,8 @@ def main():
     if MODO == "teste":  # "Run workflow" com "Só mandar uma mensagem de teste"
         log(f"Canais ligados: Telegram {'sim' if TG_TOKEN else 'NÃO (falta o Secret TELEGRAM_TOKEN)'} · "
             f"e-mail {'sim' if GM_USER and GM_PASS else 'não'} · celular {'sim' if VAPID_PRIVATE else 'não'}")
+        if GM_USER and GM_PASS:
+            diagnostico_gmail()
         for m in equipe:
             canais = [c for c, tem in (("Telegram", TG_TOKEN and m.get("telegram")),
                                        ("e-mail", GM_USER and GM_PASS and m.get("email"))) if tem]
