@@ -32,5 +32,12 @@ confere('Pix: exemplo oficial do Banco Central',
   '00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D');
 confere('Pix: telefone vira +55', vm.runInContext(`normChavePix('(91) 98888-7777')`, ctx), '+5591988887777');
 confere('prazo sugerido pelo texto', vm.runInContext(`sugerirDias('no prazo de 15 (quinze) dias, sob pena').dias`, ctx), 15);
+// robô: o vencimento que ele calcula sozinho tem que ser igual ao da tela, e a leitura automática das intimações
+const { execFileSync } = require('child_process');
+const vRobo = JSON.parse(execFileSync('node', [path.join(raiz, 'robo', 'vencimento.js')],
+  { input: JSON.stringify({ prazos: [{ ...base, dataInicio: '2026-11-10', dias: 15 }] }) }).toString());
+confere('robô: vencimento igual ao da tela (15 dias úteis, DJEN 10/11/2026)', vRobo, ['2026-12-03']);
+try { console.log(execFileSync('python3', [path.join(raiz, 'robo', 'teste_automatico.py')]).toString()); }
+catch (e) { console.log(String(e.stdout || e.message)); confere('robô: leitura automática de audiências e prazos', 'falhou', 'ok'); }
 if (falhas) { console.error(`\n${falhas} teste(s) falharam.`); process.exit(1); }
 console.log('\nTodos os cálculos conferem.');

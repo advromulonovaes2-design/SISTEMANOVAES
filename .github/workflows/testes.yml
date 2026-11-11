@@ -33,13 +33,7 @@ jobs:
       - name: Código do sistema sem erro de digitação
         run: for f in *.js; do node --check "$f"; done
       - name: Robô sem erro de digitação
-        run: python -m py_compile robo/robo.py robo/automatico.py
-      - name: Leitura automática de audiências e prazos
-        run: python robo/teste_automatico.py
-      - name: Vencimento calculado pelo robô igual ao da tela
-        run: |
-          v=$(echo '{"prazos":[{"gatilho":"djen","contagem":"uteis","justica":"estadual","dataInicio":"2026-11-10","dias":15}]}' | node robo/vencimento.js)
-          echo "$v"; test "$v" = '["2026-12-03"]'
+        run: python -m py_compile robo/robo.py
       - name: Cálculo de prazos e Pix
         run: node testes/calculos.js
       - name: Banco de dados (instalação nova, atualização e regras de acesso)
