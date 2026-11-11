@@ -42,7 +42,7 @@ from email.utils import formataddr
 
 TZ = timezone(timedelta(hours=-3))  # Belém (sem horário de verão)
 HOJE = datetime.now(TZ).date()
-MODO = os.environ.get("MODO", "manha")  # manha = tudo; tarde = só intimações e movimentações; busca = botão "Buscar agora"
+MODO = os.environ.get("MODO", "manha")  # manha = tudo; tarde = só intimações e movimentações; busca = botão "Buscar agora"; teste = só mensagem de teste
 STATUS = {"djen": "não consultado", "consultas": 0, "novas": 0, "antigas": 0}
 SB_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
@@ -947,6 +947,21 @@ def main():
     log(f"Equipe ativa: {len(equipe)} · clientes: {len(clientes)} · processos: {len(processos)}")
     avisos = defaultdict(list)
     ler_status_anterior()
+
+    if MODO == "teste":  # "Run workflow" com "Só mandar uma mensagem de teste"
+        log(f"Canais ligados: Telegram {'sim' if TG_TOKEN else 'NÃO (falta o Secret TELEGRAM_TOKEN)'} · "
+            f"e-mail {'sim' if GM_USER and GM_PASS else 'não'} · celular {'sim' if VAPID_PRIVATE else 'não'}")
+        for m in equipe:
+            canais = [c for c, tem in (("Telegram", TG_TOKEN and m.get("telegram")),
+                                       ("e-mail", GM_USER and GM_PASS and m.get("email"))) if tem]
+            ok = entregar(m, "Teste de aviso do sistema",
+                          f"Olá, {m.get('nome', '').split(' ')[0]}! Se você recebeu esta mensagem, "
+                          "os avisos de prazo e intimação vão chegar por aqui.")
+            log(f"  {m.get('nome', '?')}: {'enviado' if ok else 'NÃO enviado'} "
+                f"({', '.join(canais) or 'nenhum canal cadastrado na Equipe'})")
+        log(f"Resultado do teste: {dict(ENVIADOS)}")
+        registrar_status(equipe)
+        return
 
     try:
         STATUS["novas"] = buscar_intimacoes(equipe, clientes, processos, avisos) or 0
