@@ -37,19 +37,20 @@ const round2=x=>Math.round((Number(x)||0)*100)/100;
 /* =====================================================================
    FINANCEIRO
    ===================================================================== */
-const MODAL=[['avista','À vista'],['parcelado','Parcelado'],['exito','Só êxito (%)'],['entrada_exito','Entrada + êxito'],['parcelado_exito','Parcelado + êxito']];
+const MODAL=[['avista','À vista'],['parcelado','Parcelado'],['entrada_parcelado','Entrada + parcelas'],['exito','Só êxito (%)'],['entrada_exito','Entrada + êxito'],['parcelado_exito','Parcelado + êxito']];
 const modalNome=m=>(MODAL.find(x=>x[0]===m)||[0,'—'])[1];
-const temFixo=f=>['avista','parcelado','parcelado_exito'].includes(f.modalidade);
-const temParc=f=>['parcelado','parcelado_exito'].includes(f.modalidade);
+const temFixo=f=>['avista','parcelado','entrada_parcelado','parcelado_exito'].includes(f.modalidade);
+const temParc=f=>['parcelado','entrada_parcelado','parcelado_exito'].includes(f.modalidade);
 const temExito=f=>['exito','entrada_exito','parcelado_exito'].includes(f.modalidade);
-const temEntrada=f=>f.modalidade==='entrada_exito';
+const temEntrada=f=>['entrada_exito','entrada_parcelado'].includes(f.modalidade);
+const saldoParcelado=f=>f.modalidade==='entrada_parcelado'?(Number(f.valor)||0)-(Number(f.entrada)||0):(Number(f.valor)||0); // em "Entrada + parcelas" o valor é o total do contrato
 function addMes(s,n){const d=parseD(s);const y=d.getUTCFullYear(),m=d.getUTCMonth()+n,day=d.getUTCDate();const last=new Date(Date.UTC(y,m+1,0)).getUTCDate();return ymd(new Date(Date.UTC(y,m,Math.min(day,last))));}
 function gerarParcelas(v){
   const out=[];
   if(temEntrada(v)&&Number(v.entrada)>0&&v.entradaVenc)out.push({n:1,desc:'Entrada',venc:v.entradaVenc,valor:round2(v.entrada)});
-  if(temFixo(v)&&Number(v.valor)>0&&v.primeiroVenc){
+  if(temFixo(v)&&saldoParcelado(v)>0&&v.primeiroVenc){
     const N=v.modalidade==='avista'?1:Math.max(1,Math.floor(Number(v.parcelasN)||1));
-    const cents=Math.round(Number(v.valor)*100),base=Math.floor(cents/N);
+    const cents=Math.round(saldoParcelado(v)*100),base=Math.floor(cents/N);
     for(let i=0;i<N;i++)out.push({n:i+1,desc:N===1?'Parcela única':`Parcela ${i+1}/${N}`,venc:addMes(v.primeiroVenc,i),valor:(i===N-1?cents-base*(N-1):base)/100});
   }
   if(temExito(v)&&Number(v.exitoValor)>0&&v.exitoVenc)out.push({n:99,desc:'Êxito',venc:v.exitoVenc,valor:round2(v.exitoValor)});
@@ -71,7 +72,7 @@ FORMS.honorarios={t:'Contrato de honorários',f:[
   {k:'formaPagamento',l:'Forma',t:'select',o:['Pix','Boleto','Transferência bancária','Cartão de crédito','Dinheiro'],half:1},
   {k:'responsavelId',l:'Responsável pela cobrança',t:'ref',col:'equipe',lab:m=>m.nome,half:1},
   {g:'Valor fixo',show:temFixo},
-  {k:'valor',l:'Valor total (R$)',t:'number',half:1,show:temFixo,ph:'3000'},
+  {k:'valor',l:'Valor total (R$)',t:'number',half:1,show:temFixo,ph:'3000',hint:'Em "Entrada + parcelas", é o total do contrato: as parcelas dividem o que sobra depois da entrada.'},
   {k:'parcelasN',l:'Nº de parcelas',t:'number',half:1,show:temParc,ph:'10'},
   {k:'primeiroVenc',l:'Vencimento da 1ª parcela',t:'date',half:1,show:temFixo},
   {g:'Entrada',show:temEntrada},
@@ -87,7 +88,7 @@ FORMS.honorarios={t:'Contrato de honorários',f:[
   {k:'obs',l:'Observações',t:'area'}],
   after(v){const box=$('#parcBox');if(!box)return;const p=gerarParcelas(v);
     box.innerHTML=p.length?`<span class="lab">Parcelas que entram no controle</span><div class="parcelas">${p.map(x=>`<div><span>${esc(x.desc)} · ${fmtD(x.venc)}</span><span class="money">${brl(x.valor)}</span></div>`).join('')}<div><b>Total</b><b class="money">${brl(p.reduce((s,x)=>s+x.valor,0))}</b></div></div>`
-      :`<span class="hint">${temExito(v)&&!temFixo(v)&&!temEntrada(v)?'Só êxito: nenhuma parcela agora. Informe o valor do êxito quando souber.':'Preencha valor e vencimento para ver as parcelas.'}</span>`;},
+      :`<span class="hint">${temExito(v)&&!temFixo(v)&&!temEntrada(v)?'Só êxito: nenhuma parcela agora. Informe o valor do êxito quando souber.':v.modalidade==='entrada_parcelado'&&Number(v.valor)>0&&saldoParcelado(v)<=0?'O valor total precisa ser maior que a entrada.':'Preencha valor e vencimento para ver as parcelas.'}</span>`;},
   beforeSave(v,id){
     const old=id?byId('honorarios',id):null;const{res,perdidas}=juntarParcelas(gerarParcelas(v),old&&old.parcelas);
     if(perdidas.length){v.parcelas=old.parcelas;toast('Há parcelas já recebidas que mudariam. Mantive as parcelas antigas; ajuste direto no Financeiro.');}
@@ -276,6 +277,7 @@ function textoHonorarios(h){
     case'avista':return ini+`honorários no valor de ${brl(fixo)} (${valorExtenso(fixo)}).`;
     case'parcelado':return ini+`honorários no valor total de ${brl(fixo)} (${valorExtenso(fixo)}), divididos em ${N} (${numExt(N)}) parcelas mensais.`;
     case'exito':return ini+exito+'. Não havendo êxito, nada será devido a título de honorários contratuais, ressalvado o disposto na cláusula 8ª.';
+    case'entrada_parcelado':return ini+`honorários no valor total de ${brl(fixo)} (${valorExtenso(fixo)}), sendo ${brl(ent)} (${valorExtenso(ent)}) de entrada e o saldo de ${brl(fixo-ent)} (${valorExtenso(fixo-ent)}) dividido em ${N} (${numExt(N)}) parcelas mensais.`;
     case'entrada_exito':return ini+`honorários compostos de: (a) entrada de ${brl(ent)} (${valorExtenso(ent)}), não reembolsável; e (b) ${exito}.`;
     case'parcelado_exito':return ini+`honorários compostos de: (a) valor fixo de ${brl(fixo)} (${valorExtenso(fixo)}), dividido em ${N} (${numExt(N)}) parcelas mensais; e (b) ${exito}.`;
   }

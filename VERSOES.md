@@ -9,6 +9,10 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.10 · 11/11/2026
+
+- **Honorários**: novo modo de pagamento **Entrada + parcelas**. O valor total é o do contrato; as parcelas dividem o que sobra depois da entrada. O contrato sai com o texto da entrada e do saldo parcelado.
+
 ## Versão 3.9 · 11/11/2026
 
 - **Lançamentos automáticos pelo robô** (`robo/automatico.py`): ao ler as intimações, o robô cadastra sozinho as **audiências, perícias e plenários** com data futura (data, hora, formato e link da sala) e os **prazos reconhecíveis**: contestação (cível), resposta à acusação, réplica, alegações finais, contrarrazões, recurso contra sentença e qualquer prazo escrito na intimação ("no prazo de 5 dias"). Tudo entra marcado como **lançado pelo robô — conferir** e o aviso do dia traz o bloco "LANÇADOS AUTOMATICAMENTE — CONFIRA NO SISTEMA".
