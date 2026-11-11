@@ -77,7 +77,7 @@ VIEWS.acessos={t:'Acessos',
       </div></div>`;};
     const g=lib.filter(a=>a.gestor).length,e=lib.length-g;
     return `<div class="sec"><h2>Liberados · ${g} ${g===1?'gestor':'gestores'} e ${e} da equipe</h2><div class="list">${lib.map(linha).join('')||'<span class="muted">Ninguém liberado.</span>'}</div></div>
-      ${pend.length?`<div class="sec"><h2>Criaram conta, mas não estão liberados</h2><span class="hint" style="display:block;margin-bottom:8px">Essas pessoas fizeram o "Primeiro acesso", mas não veem nada do sistema. Libere só quem você conhece.</span><div class="list">${pend.map(a=>`<div class="row"><div class="main"><div class="t">${esc(a.email)}</div><div class="m">Conta criada em ${fmtDT(a.desde)}${a.confirmado?'':' · e-mail ainda não confirmado'}</div><div class="acts"><button class="btn sm pri" type="button" data-liberar="${esc(a.email)}" data-g="0">Liberar como equipe</button><button class="btn sm" type="button" data-liberar="${esc(a.email)}" data-g="1">Liberar como gestor</button></div></div></div>`).join('')}</div></div>`:''}
+      ${pend.length?`<div class="sec"><h2>Criaram conta, mas não estão liberados</h2><span class="hint" style="display:block;margin-bottom:8px">Essas pessoas fizeram o "Primeiro acesso", mas não veem nada do sistema. Libere só quem você conhece.</span><div class="list">${pend.map(a=>`<div class="row"><div class="main"><div class="t">${esc(a.email)}</div><div class="m">Conta criada em ${fmtDT(a.desde)}${a.confirmado?'':' · e-mail ainda não confirmado'}</div><div class="acts"><button class="btn sm pri" type="button" data-liberar="${esc(a.email)}" data-g="0">Liberar como equipe</button><button class="btn sm" type="button" data-liberar="${esc(a.email)}" data-g="1">Liberar como gestor</button><button class="btn sm ghost" type="button" data-excluirsol="${esc(a.email)}">Excluir solicitação</button></div></div></div>`).join('')}</div></div>`:''}
       <div class="sec"><h2>O que cada um pode fazer</h2><div class="grid2">
         <div class="row"><div class="main"><div class="t">Gestor</div><div class="m">Tudo: Ajustes do escritório, Equipe, Acessos, Financeiro, Relatórios, Histórico e excluir registros.</div></div></div>
         <div class="row"><div class="main"><div class="t">Equipe</div><div class="m">Clientes, processos, prazos, intimações, tarefas, júri, documentos e agenda: vê, cadastra e edita. Não vê financeiro, relatórios nem histórico, e não exclui (só cartões de tarefa). Muda só os próprios canais de aviso.</div></div></div>
@@ -85,13 +85,31 @@ VIEWS.acessos={t:'Acessos',
   }};
 
 document.addEventListener('click',async e=>{
-  const t=e.target.closest('[data-liberar],[data-papel],[data-tirar],[data-cadequipe]');if(!t||!ehGestor())return;
+  const t=e.target.closest('[data-liberar],[data-papel],[data-tirar],[data-cadequipe],[data-excluirsol]');if(!t||!ehGestor())return;
   e.preventDefault();e.stopPropagation();
   if(t.dataset.liberar){if(await liberarAcesso(t.dataset.liberar,t.dataset.g==='1')){if(SH&&SH.refresh)SH.refresh();else if(FORMS.equipe.after&&$('#acessoBox'))FORMS.equipe.after({email:t.dataset.liberar});body_();}return;}
   if(t.dataset.papel){if(!t.dataset.armed){t.dataset.armed='1';t.textContent=t.dataset.g==='1'?'Confirmar: tornar gestor':'Confirmar: tornar equipe';return;}return mudarPapel(t.dataset.papel,t.dataset.g==='1');}
   if(t.dataset.tirar){if(!t.dataset.armed){t.dataset.armed='1';t.textContent='Toque de novo para tirar';return;}return tirarAcesso(t.dataset.tirar);}
   if(t.dataset.cadequipe){openForm('equipe',null,{email:t.dataset.cadequipe});}
+  if(t.dataset.excluirsol){if(!t.dataset.armed){t.dataset.armed='1';t.textContent='Toque de novo para excluir';return;}return excluirSolicitacao(t.dataset.excluirsol,t);}
 },true);
+
+/* apaga a conta de quem pediu acesso e não foi liberado (função excluir-solicitacao no Supabase) */
+async function excluirSolicitacao(email,bt){
+  if(bt){bt.disabled=true;bt.textContent='Excluindo…';}
+  let res=null;
+  try{const{data,error}=await sb.functions.invoke('excluir-solicitacao',{body:{email}});
+    if(error){try{res=await error.context.json();}catch(_){res={erro:'rede'};}}else res=data;}catch(_){res={erro:'rede'};}
+  if(res&&res.ok){await carregarAcessos();toast(`Solicitação de ${email} excluída. Se a pessoa tentar de novo, aparece aqui outra vez.`,5000);body_();return;}
+  const e=res&&res.erro;
+  toast(e==='liberado'?'Esse e-mail está liberado. Use "Tirar acesso" antes.'
+    :e==='sem_permissao'?'Só gestores podem excluir solicitações.'
+    :e==='nao_encontrado'?'Essa conta já não existe.'
+    :e==='rede'?'Não foi possível excluir (sem internet ou a função não está instalada).'
+    :'Não foi possível excluir agora. Tente de novo.',5000);
+  if(bt){bt.disabled=false;bt.textContent='Excluir solicitação';delete bt.dataset.armed;}
+  if(e==='nao_encontrado'){await carregarAcessos();body_();}
+}
 
 /* "Minha conta" para quem é da equipe */
 function openMinhaConta(){

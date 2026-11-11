@@ -9,6 +9,12 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.7 · 11/11/2026
+
+- **Acessos**: botão **Excluir solicitação** para quem criou conta e não foi aprovado (função `excluir-solicitacao` no Supabase; só gestores; não apaga quem está liberado).
+- **Robô**: opção **Só mandar uma mensagem de teste** no Run workflow (testa Telegram, e-mail e celular de cada pessoa). O e-mail tenta a porta 587 se a 465 falhar e explica o erro no relatório.
+- **Aviso no celular**: tenta de novo quando o Android falha na primeira vez e explica o erro do serviço do Google.
+
 ## Versão 3.6 · 10/11/2026
 
 - **Assistente de IA dentro do sistema**: conversa na própria tela, com resposta aparecendo aos poucos e perguntas de continuação; botões Copiar, Salvar como petição e Mandar no WhatsApp. Função `ia` no Supabase (secret `ANTHROPIC_API_KEY`; opcionais `IA_MODELO` e `IA_LIMITE_DIA`). Sem a chave, oferece levar o pedido ao Claude.
