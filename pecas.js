@@ -186,7 +186,7 @@ function abrirPeca(docId,novo){
   const guardar=async(comPdf)=>{
     html=ed.html();const titulo=$('#pc_t').value.trim()||'Petição';
     const dados={tipo:'peticao',titulo,texto:html,clienteId:base.clienteId,processoId:base.processoId||'',status:'rascunho',arquivo:d&&d.arquivo||''};
-    if(comPdf){try{const bytes=await montarPDF(htmlParaPdf(html));const nome=nomeArquivo('peticao',(byId('clientes',base.clienteId)||{}).nome);const blob=new Blob([bytes],{type:'application/pdf'});
+    if(comPdf){try{const prP=byId('processos',base.processoId);const bytes=await montarPDF(htmlParaPdf(html),{proc:prP&&prP.numero||'',sub:String(base.titulo||base.nome||'Petição').slice(0,70)});const nome=nomeArquivo('peticao',(byId('clientes',base.clienteId)||{}).nome);const blob=new Blob([bytes],{type:'application/pdf'});
       const pasta=`documentos/${docId||uid()}`;const p=await enviarArquivo(new File([blob],nome,{type:'application/pdf'}),pasta);if(!p)return;dados.arquivo=p;dados.status='pdf';try{baixarBlob(blob,nome);}catch(_){}}
       catch(e){console.error(e);return toast('Não foi possível gerar o PDF: '+(e.message||'erro'));}}
     const id=await salvar('documentos',docId,{...(d||{}),...dados});

@@ -62,7 +62,7 @@ ${quem?quem.nome.toUpperCase()+' – OAB/'+o.uf+' '+o.num:(S.config.nome||NOME_P
 ${S.config.sociedade||S.config.nome||NOME_PADRAO}${S.config.cnpj?' – CNPJ '+S.config.cnpj:''}`;
   try{
     toast('Gerando recibo…');
-    const bytes=await montarPDF(txt);const nome=nomeArquivo('recibo',c.nome);
+    const prR=byId('processos',h.processoId);const bytes=await montarPDF(txt,{proc:prR&&prR.numero||'',sub:'Recibo de honorários · '+(c.nome||'')});const nome=nomeArquivo('recibo',c.nome);
     const blob=new Blob([bytes],{type:'application/pdf'});const id=uid();
     const path=await enviarArquivo(new File([blob],nome,{type:'application/pdf'}),`documentos/${id}`);if(!path)return;
     const ok=await salvar('documentos',null,{tipo:'recibo',clienteId:h.clienteId,processoId:h.processoId||'',honorariosId:h.id,parcela:p.desc,valor:p.valor,arquivo:path,nomeArquivo:nome,status:'emitido'},id);

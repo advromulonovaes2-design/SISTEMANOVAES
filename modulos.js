@@ -319,59 +319,7 @@ const preencher=(modelo,map)=>modelo.replace(/\{\{([A-Z_]+)\}\}/g,(m,k)=>k in ma
 /* ---------- PDF com a logo (pdf-lib, incluída no sistema) ---------- */
 const PDF_TROCA={'→':'->','←':'<-','✓':'v','≤':'<=','≥':'>=',' ':' ',' ':' ','​':'','\t':'    '};
 function dataUrlBytes(u){const b=atob(String(u).split(',')[1]||'');const a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
-async function montarPDF(texto){
-  if(!window.PDFLib)throw new Error('O gerador de PDF não carregou. Recarregue a página.');
-  const{PDFDocument,StandardFonts,rgb}=PDFLib;
-  const pdf=await PDFDocument.create();
-  pdf.setTitle(String(texto).trim().split('\n')[0].slice(0,120));pdf.setCreator(S.config.nome||NOME_PADRAO);pdf.setLanguage('pt-BR');
-  const fR=await pdf.embedFont(StandardFonts.TimesRoman),fB=await pdf.embedFont(StandardFonts.TimesRomanBold),fH=await pdf.embedFont(StandardFonts.Helvetica);
-  const MM=72/25.4,W=595.28,H=841.89,ML=25*MM,MR=20*MM,MT=16*MM,MB=26*MM,LW=W-ML-MR,cfg=S.config||{};
-  const TAM=11.5,LH=5.6*MM;
-  // largura somando letra por letra (o desenho não aplica o ajuste entre pares de letras)
-  const cw=new Map();const wid=(t,font,size)=>{let k=cw.get(font);if(!k){k={};cw.set(font,k);}let s=0;for(const ch of t){if(!(ch in k))k[ch]=font.widthOfTextAtSize(ch,1000);s+=k[ch];}return s*size/1000;};
-  // troca caracteres que a fonte do PDF não tem
-  const cache={};
-  const limpa=t=>[...String(t)].map(ch=>{if(ch in cache)return cache[ch];let r=PDF_TROCA[ch];if(r===undefined){try{fR.widthOfTextAtSize(ch,10);r=ch;}catch(e){r=ch.normalize('NFD').replace(/[^\x20-\x7e¡-ÿ]/g,'')||'?';try{fR.widthOfTextAtSize(r,10);}catch(_){r='?';}}}return cache[ch]=r;}).join('');
-  let img=null;const logo=cfg.logo||window.LOGO_PADRAO;
-  if(logo){try{const by=dataUrlBytes(logo);img=/^data:image\/png/i.test(logo)?await pdf.embedPng(by):await pdf.embedJpg(by);}catch(e){img=null;}}
-  let page,y,pg=0;
-  const cinza=rgb(0.43,0.43,0.43);
-  const quebrar=(t,font,size,larg)=>{const ps=t.split(/ +/);const out=[];let cur='';
-    for(const p of ps){const tent=cur?cur+' '+p:p;if(wid(tent,font,size)<=larg||!cur)cur=tent;else{out.push(cur);cur=p;}
-      while(wid(cur,font,size)>larg&&cur.length>1){let k=cur.length-1;while(k>1&&wid(cur.slice(0,font,k),size)>larg)k--;out.push(cur.slice(0,k));cur=cur.slice(k);}}
-    if(cur)out.push(cur);return out;};
-  const rodape=()=>{const linha=limpa([cfg.sociedade||cfg.nome||NOME_PADRAO,cfg.endereco,cfg.telefone,cfg.email].filter(Boolean).join('  •  '));
-    const ls=quebrar(linha,fH,8,LW);ls.forEach((l,i)=>{const lw=wid(l,fH,8);page.drawText(l,{x:(W-lw)/2,y:14*MM-(i*9),size:8,font:fH,color:cinza});});
-    const n=`Página ${pg}`;page.drawText(n,{x:W-MR-wid(n,fH,8),y:7*MM,size:8,font:fH,color:cinza});};
-  const novaPagina=()=>{if(page)rodape();page=pdf.addPage([W,H]);pg++;let hy=MT;
-    if(img){let lw=52*MM,lh=img.height*lw/img.width;if(lh>25*MM){lh=25*MM;lw=img.width*lh/img.height;}page.drawImage(img,{x:(W-lw)/2,y:H-hy-lh,width:lw,height:lh});hy+=lh+3*MM;}
-    else{const n=limpa(cfg.nome||NOME_PADRAO);const nw=wid(n,fB,14);page.drawText(n,{x:(W-nw)/2,y:H-hy-12,size:14,font:fB});hy+=9*MM;}
-    page.drawLine({start:{x:ML,y:H-hy},end:{x:W-MR,y:H-hy},thickness:0.6,color:rgb(0.63,0.63,0.63)});y=hy+9*MM;};
-  const cabe=h=>{if(y+h>H-MB)novaPagina();};
-  // desenha uma linha justificada (espaços distribuídos), ou alinhada à esquerda/centro
-  const linha=(t,font,size,modo)=>{const base=H-y;
-    if(modo==='centro'){const tw=wid(t,font,size);page.drawText(t,{x:(W-tw)/2,y:base,size,font});return;}
-    const ps=t.split(' ').filter(Boolean);
-    if(modo!=='justificar'||ps.length<2){page.drawText(t,{x:ML,y:base,size,font});return;}
-    const soma=ps.reduce((s,p)=>s+wid(p,font,size),0);const gap=(LW-soma)/(ps.length-1);
-    if(gap>wid(' ',font,size)*4){page.drawText(t,{x:ML,y:base,size,font});return;}
-    let x=ML;ps.forEach(p=>{page.drawText(p,{x,y:base,size,font});x+=wid(p,font,size)+gap;});};
-  novaPagina();
-  const linhas=String(texto).replace(/\r/g,'').split('\n').map(limpa);let tituloFeito=false,centro=false;
-  for(const raw of linhas){
-    const l=raw.replace(/\s+$/,'');
-    if(!l.trim()){y+=LH*0.6;centro=false;continue;}
-    if(!tituloFeito){tituloFeito=true;quebrar(l.trim(),fB,13.5,LW).forEach(x=>{cabe(7*MM);y+=0;linha(x,fB,13.5,'centro');y+=7*MM;});y+=3*MM;continue;}
-    if(/^_{5,}/.test(l.trim()))centro=true;
-    const negrito=/^CL[ÁA]USULA/i.test(l)||(/^(OUTORGANTE|OUTORGADO|PODERES|CONTRATANTE|CONTRATADO|TESTEMUNHAS|RECIBO|EXCELENT)/.test(l)&&l===l.toUpperCase())||/^#{1,3} /.test(l);
-    const txt=l.replace(/^#{1,3} /,'');const font=negrito?fB:fR;
-    const partes=quebrar(centro?txt.trim():txt,font,TAM,LW);
-    partes.forEach((p,i)=>{cabe(LH);linha(p,font,TAM,centro?'centro':(i<partes.length-1?'justificar':'esquerda'));y+=LH;});
-    y+=1.2*MM;
-  }
-  rodape();
-  return pdf.save();
-}
+/* montarPDF: veja visual.js (padrão visual law) */
 function nomeArquivo(prefixo,nome){return `${prefixo}-${String(nome||'cliente').toLowerCase().normalize('NFD').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-').slice(0,40)}.pdf`;}
 function baixarBlob(blob,nome){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);}
 
@@ -419,7 +367,7 @@ function openGerador(tipo,preset){
     if(!window.PDFLib)return toast('O gerador de PDF não carregou. Recarregue a página.');
     const btn=$('#gS');btn.disabled=true;btn.textContent='Gerando…';
     try{
-      const txt=$('#g_txt').value;const bytes=await montarPDF(txt);const c=byId('clientes',o.clienteId);
+      const txt=$('#g_txt').value;const c=byId('clientes',o.clienteId);const prV=byId('processos',o.processoId);const bytes=await montarPDF(txt,{proc:prV&&prV.numero||'',sub:(ehP?'Procuração · Outorgante: ':'Contrato de honorários · ')+((c&&c.nome)||'')});
       const nome=nomeArquivo(ehP?'procuracao':'contrato',c&&c.nome);
       const id=uid();const blob=new Blob([bytes],{type:'application/pdf'});const file=new File([blob],nome,{type:'application/pdf'});
       const path=await enviarArquivo(file,`documentos/${id}`);if(!path)throw new Error('upload');

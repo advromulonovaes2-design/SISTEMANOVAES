@@ -31,7 +31,7 @@ function copiar(txt){
 }
 
 /* ---------- dados ---------- */
-const VERSAO='3.11 · 12/11/2026';
+const VERSAO='3.12 · 12/11/2026';
 let PAPEL='equipe';const ehGestor=()=>PAPEL==='gestor';
 const SO_GESTOR=['financeiro','relatorios','historico','acessos'];
 const TABS=['equipe','clientes','processos','prazos','tarefas','honorarios','documentos','eventos','juri','modelos'];

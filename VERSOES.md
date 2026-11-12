@@ -9,6 +9,11 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.12 · 12/11/2026
+
+- **Documentos no padrão visual law** (`visual.js`): procuração, contrato, recibo e petições saem com cabeçalho com monograma "PN" e nome espaçado, número do processo e tipo do documento à direita, filete dourado, título grande com subtítulo dourado, quadros para outorgante/contratante (bege) e outorgados/contratados (contorno), títulos de seção com traço dourado, seções numeradas (I, II, III) nas petições, marcadores e letras douradas nas listas, destaque do valor no recibo, nomes em maiúsculas em negrito, data à direita junto da assinatura e rodapé com endereço e número da página.
+- Os modelos continuam em texto; o visual sai das marcas do próprio texto (veja o início de `visual.js`).
+
 ## Versão 3.11 · 12/11/2026
 
 - **Financeiro** (`financeiro.js`):
