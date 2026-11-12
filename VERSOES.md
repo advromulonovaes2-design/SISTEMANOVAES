@@ -9,6 +9,14 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.11 · 12/11/2026
+
+- **Financeiro** (`financeiro.js`):
+  - No contrato, cada parcela pode ter a **data e o valor próprios**, além de adicionar ou remover parcelas e marcar como recebida com a data. "Refazer pelo valor e nº de parcelas" volta ao cálculo automático.
+  - Não deixa mais salvar contrato com valor e **sem vencimento** (era por isso que o contrato ficava sem parcelas); avisa os contratos que estão sem parcelas.
+  - Contratos mostram recebido, falta receber, total e a próxima parcela, com a lista de parcelas e os botões Recebido, Cobrar e Recibo.
+  - Parcelas com filtros (A receber, Atrasadas, Este mês, Recebidas, Todas) e quadro **Mês a mês** (previsto, recebido e em aberto, de 2 meses atrás até 5 meses à frente).
+
 ## Versão 3.10 · 11/11/2026
 
 - **Honorários**: novo modo de pagamento **Entrada + parcelas**. O valor total é o do contrato; as parcelas dividem o que sobra depois da entrada. O contrato sai com o texto da entrada e do saldo parcelado.
