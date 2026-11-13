@@ -162,7 +162,8 @@ def extrair_compromisso(texto, hoje=None):
     modalidade = ("Semipresencial (híbrida)" if virtual and presencial else "Telepresencial (virtual)" if virtual
                   else "Presencial" if presencial else "")
     link = ""
-    urls = re.findall(r"https?://[^\s<>\"')\]]+", str(texto or ""))
+    junto = re.sub(r"([?&=])\s+(?=[\w-]+=|[A-Za-z0-9])", r"\1", str(texto or ""))  # link quebrado em duas linhas
+    urls = re.findall(r"https?://[^\s<>\"')\]]+", junto)
     urls = [u.rstrip(".,;:") for u in urls]
     pref = [u for u in urls if re.search(r"zoom\.us|teams\.microsoft|teams\.live|meet\.google|webex|jitsi|balcao|salavirtual|sala-virtual|videoconf|audienciavirtual", u, re.I)
             and not re.search(r"consulta|visualizacao|/pje", u, re.I)]

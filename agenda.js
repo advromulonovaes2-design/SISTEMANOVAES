@@ -35,7 +35,8 @@ const EV_AGENDA=['Audiência','Perícia judicial','Perícia administrativa (INSS
 const evClasse=t=>/Plenário|Júri/.test(t||'')?'k-jur':/Perícia/.test(t||'')?'k-per':/Audiência|Sessão/.test(t||'')?'k-aud':'k-out';
 const ehCompromisso=e=>EV_AGENDA.includes(e.tipo)||!!e.hora;
 /* links: só abre endereços http(s); completa o https:// se a pessoa colar sem */
-function normLink(u){u=String(u||'').trim();if(!u)return'';if(!/^[a-z][a-z0-9+.-]*:/i.test(u))u='https://'+u.replace(/^\/+/,'');return u;}
+/* link colado do WhatsApp ou de PDF costuma vir quebrado em duas linhas: tira espaços e quebras */
+function normLink(u){u=String(u||'').trim().replace(/^[<"'(]+|[>"')]+$/g,'').replace(/\s+/g,'');if(!u)return'';if(!/^[a-z][a-z0-9+.-]*:/i.test(u))u='https://'+u.replace(/^\/+/,'');return u;}
 function linkSeguro(u){u=normLink(u);return /^https?:\/\/[^\s]+$/i.test(u)?u:'';}
 const MODALIDADES=['Presencial','Telepresencial (virtual)','Semipresencial (híbrida)'];
 const ehVirtual=m=>!!m&&m!=='Presencial';

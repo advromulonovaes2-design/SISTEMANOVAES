@@ -61,6 +61,8 @@ confere("sentença no JEC com menção a contrarrazões: recurso inominado", (p[
         ("Avaliar recurso contra a sentença (recurso inominado)", 10))
 c = extrair_compromisso("Audiência designada para 20/12/2026 às 10h, de forma virtual. Consulte em http://pje-consultas.tjpa.jus.br/pje-1g-consultas/x", HOJE)
 confere("link de consulta do processo não vira link da sala", c["link"], "")
+c = extrair_compromisso("Audiência telepresencial em 20/12/2026 às 10h. Link: https://trt8-jus-br.zoom.us/j/87388706995?\npwd=VHQxZz09 ID da reunião: 873 8870 6995", HOJE)
+confere("link do zoom quebrado em duas linhas", c["link"], "https://trt8-jus-br.zoom.us/j/87388706995?pwd=VHQxZz09")
 confere("ato sem prazo não lança", classificar_prazo({**civ, "texto": "Junte-se. Aguarde-se o retorno do AR."}), None)
 confere("dias por extenso", dias_no_texto("no prazo de quinze dias")[0], 15)
 
