@@ -4,7 +4,8 @@
 // Precisa do secret GITHUB_TOKEN (token do GitHub com permissão de Actions neste repositório).
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
-const REPO = "advromulonovaes2-design/SISTEMANOVAES";
+// repositório do sistema no GitHub (secret GITHUB_REPO, ex.: "usuario/repositorio")
+const REPO = Deno.env.get("GITHUB_REPO") || "advromulonovaes2-design/SISTEMANOVAES";
 const WORKFLOW = "robo.yml";
 const cors = {
   "Access-Control-Allow-Origin": "*",
