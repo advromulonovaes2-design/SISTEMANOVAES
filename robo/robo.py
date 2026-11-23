@@ -1108,6 +1108,8 @@ def registrar_status(equipe=None):
     d = {**ANTERIOR, **STATUS, "ultimaExecucao": agora, "modo": MODO}
     if MODO in ("manha", "tarde"):
         d["ultimaRotina"] = agora
+    if MODO == "manha":
+        d["ultimaManha"] = HOJE.isoformat()
     d["canais"] = {"telegram": bool(TG_TOKEN), "gmail": bool(GM_USER and GM_PASS), "push": bool(VAPID_PRIVATE),
                    "grupo": bool(TG_TOKEN and TG_GRUPO), "alertaEmail": bool(ALERTA_EMAIL)}
     if equipe is not None:
@@ -1182,7 +1184,11 @@ def main():
             calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos, equipe, gestores, max_dias=1, min_dias=0)
         except Exception as e:
             log(f"Lembrete de prazos da tarde: erro {e}")
-    if MODO not in ("tarde", "busca"):
+    repetida = (MODO == "manha" and os.environ.get("GITHUB_EVENT_NAME") == "schedule"
+                and ANTERIOR.get("ultimaManha") == HOJE.isoformat())
+    if repetida:  # alguém já rodou a rotina da manhã na mão hoje: não repete os avisos de prazo e agenda
+        log("A rotina da manhã já rodou hoje (na mão): avisos de prazo, agenda e honorários não serão repetidos.")
+    if MODO not in ("tarde", "busca") and not repetida:
         try:
             calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos, equipe, gestores)
             calcular_avisos_financeiro(registros("honorarios"), clientes, equipe, avisos)

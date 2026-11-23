@@ -13,6 +13,7 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 - **Robô**: os **gestores recebem cópia de todos os avisos de prazo** (com o nome do responsável). Prazo sem responsável vai direto para os gestores. Para desligar: `avisosPrazoGestores: false` nos Ajustes (config `geral`).
 - **Lembrete das 16h**: a rotina da tarde também avisa os prazos que vencem **hoje e amanhã**.
+- Se a rotina da manhã for rodada na mão, a automática do mesmo dia não repete os avisos de prazo, agenda e honorários.
 
 ## Versão 3.13 · 13/11/2026
 
