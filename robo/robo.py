@@ -836,9 +836,24 @@ def atualizar_movimentacoes(processos, avisos):
     return mudou
 
 
-def calcular_avisos_prazos(prazos, processos, clientes, avisos):
+def ids_gestores(equipe):
+    """Pessoas da Equipe que são gestores (aba Acessos). Elas recebem cópia de todos os avisos de prazo,
+    a não ser que Ajustes tenha avisosPrazoGestores = false."""
+    try:
+        cfg = (sb("GET", "config", params={"select": "dados", "id": "eq.geral"}) or [{}])[0].get("dados") or {}
+        if cfg.get("avisosPrazoGestores") is False:
+            return []
+        emails = {str(a.get("email", "")).lower() for a in (sb("GET", "acesso", params={"select": "email", "gestor": "eq.true"}) or [])}
+    except Exception as e:
+        log(f"Gestores: não consegui ler ({e}); avisos de prazo só para o responsável.")
+        return []
+    return [m["id"] for m in equipe if str(m.get("email", "")).lower() in emails]
+
+
+def calcular_avisos_prazos(prazos, processos, clientes, avisos, equipe=(), gestores=(), max_dias=3, min_dias=-30):
     procs = {p["id"]: p for p in processos}
     clis = {c["id"]: c for c in clientes}
+    nomes = {m["id"]: m.get("nome", "") for m in equipe}
     n = 0
     for pz in prazos:
         if pz.get("cumprido") or not pz.get("vencimento"):
@@ -848,16 +863,22 @@ def calcular_avisos_prazos(prazos, processos, clientes, avisos):
         except ValueError:
             continue
         dd = (venc - HOJE).days
-        if dd > 3 or dd < -30:
+        if dd > max_dias or dd < min_dias:
             continue
         quando = "VENCIDO há %d dia(s)" % -dd if dd < 0 else "VENCE HOJE" if dd == 0 else "vence amanhã" if dd == 1 else f"vence em {dd} dias"
         pr = procs.get(pz.get("processoId")) or {}
         cli = clis.get(pr.get("clienteId")) or {}
         conf = "" if pz.get("conferidoPor") else "\n  ⚠ Ainda não conferido por uma segunda pessoa."
         txt = f"• {quando} ({br(venc)}): {pz.get('descricao', 'Prazo')}\n  {pr.get('numero', 'sem processo')}{' — ' + cli['nome'] if cli.get('nome') else ''}{conf}"
-        avisos[pz.get("responsavelId") or "_geral"].append(("prazo", (dd, txt)))
+        resp = pz.get("responsavelId") if pz.get("responsavelId") in nomes else ""
+        copias = [g for g in gestores if g != resp]
+        if resp or not copias:
+            avisos[resp or "_geral"].append(("prazo", (dd, txt)))
+        nome_resp = (nomes.get(resp) or "").split(" ")[0] or "sem responsável"
+        for g in copias:  # gestores recebem cópia de todos os prazos
+            avisos[g].append(("prazo", (dd, f"{txt}\n  Responsável: {nome_resp}")))
         n += 1
-    log(f"Prazos para avisar: {n}")
+    log(f"Prazos para avisar: {n}" + (f" (com cópia para {len(gestores)} gestor(es))" if gestores else ""))
 
 
 AGENDA = {"Audiência", "Perícia judicial", "Perícia administrativa (INSS)", "Plenário do Júri", "Sessão de julgamento",
@@ -1155,9 +1176,15 @@ def main():
         log(f"Busca pelo botão concluída: {STATUS}")
         return
     avisar_envios(equipe, processos, clientes, avisos)
+    gestores = ids_gestores(equipe)
+    if MODO == "tarde":  # lembrete da tarde: prazos que vencem hoje e amanhã
+        try:
+            calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos, equipe, gestores, max_dias=1, min_dias=0)
+        except Exception as e:
+            log(f"Lembrete de prazos da tarde: erro {e}")
     if MODO not in ("tarde", "busca"):
         try:
-            calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos)
+            calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos, equipe, gestores)
             calcular_avisos_financeiro(registros("honorarios"), clientes, equipe, avisos)
         except Exception as e:
             log(f"Avisos de prazos/financeiro: erro {e}")

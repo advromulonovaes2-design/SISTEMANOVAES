@@ -9,6 +9,11 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.14 · 22/11/2026
+
+- **Robô**: os **gestores recebem cópia de todos os avisos de prazo** (com o nome do responsável). Prazo sem responsável vai direto para os gestores. Para desligar: `avisosPrazoGestores: false` nos Ajustes (config `geral`).
+- **Lembrete das 16h**: a rotina da tarde também avisa os prazos que vencem **hoje e amanhã**.
+
 ## Versão 3.13 · 13/11/2026
 
 - Link da sala de audiência colado quebrado em duas linhas (comum ao copiar do WhatsApp ou de PDF) agora é aceito: o sistema tira os espaços e as quebras sozinho. O robô também junta o link do Zoom quando a intimação traz o "pwd=" na linha de baixo.
