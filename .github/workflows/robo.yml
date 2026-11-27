@@ -2,8 +2,8 @@ name: Robô do escritório
 
 on:
   schedule:
-    # Horários em UTC. 10:07 UTC = 7:07 em Belém; 19:07 UTC = 16:07 em Belém. Segunda a sexta.
-    - cron: '7 10 * * 1-5'
+    # Horários em UTC. 09:07 UTC = 6:07 em Belém (o GitHub costuma atrasar ~1h, então chega perto das 7h); 19:07 UTC = 16:07 em Belém. Segunda a sexta.
+    - cron: '7 9 * * 1-5'
     - cron: '7 19 * * 1-5'
   workflow_dispatch:      # botão "Run workflow" para rodar na hora
     inputs:
@@ -58,6 +58,9 @@ jobs:
           APP_URL: ${{ secrets.APP_URL }}
           DATAJUD_KEY: ${{ secrets.DATAJUD_KEY }}
           VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           FORCAR_BACKUP: ${{ inputs.backup && '1' || '' }}
           BUSCA_OAB: ${{ inputs.oab }}
           BUSCA_DIAS: ${{ inputs.dias }}
