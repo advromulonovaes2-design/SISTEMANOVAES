@@ -29,7 +29,7 @@ const corta=(t,n)=>{t=limpo(t);return t.length>n?t.slice(0,n)+' […]':t;};
 /* ---------- dados de cada tela ---------- */
 function ctxProcessoTxt(p,{publicacoes=true}={}){
   if(!p)return'';const c=byId('clientes',p.clienteId)||{},r=byId('equipe',p.responsavelId);
-  const fase=p.fasePrev||p.faseCrim||p.faseTrab||p.faseOutro||'';
+  const fase=(p.area==='Previdenciário'?p.fasePrev:p.area==='Criminal'?p.faseCrim:p.area==='Trabalhista'?p.faseTrab:p.area==='Outro'?p.faseOutro:(p.fasePrev||p.faseCrim||p.faseTrab||p.faseOutro))||'';
   const L=[`Processo: ${p.numero||'(sem número)'}`,`Cliente: ${c.nome||'(não informado)'}`,`Área: ${p.area||''}${fase?' · Fase: '+fase:''}`,
     p.tribunal||p.vara?`Juízo: ${[p.tribunal,p.vara].filter(Boolean).join(' · ')}`:'',r?`Responsável: ${r.nome}`:'',
     p.classeCnj?`Classe (CNJ): ${p.classeCnj}`:'',p.cnj&&p.cnj.assuntos&&p.cnj.assuntos.length?`Assuntos (CNJ): ${p.cnj.assuntos.join(', ')}`:'',

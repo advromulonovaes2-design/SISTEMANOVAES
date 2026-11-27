@@ -421,8 +421,14 @@ as $$
       select json_agg(json_build_object(
         'numero', p.dados ->> 'numero',
         'area', p.dados ->> 'area',
-        'fase', coalesce(nullif(p.dados ->> 'fasePrev', ''), nullif(p.dados ->> 'faseCrim', ''), nullif(p.dados ->> 'faseTrab', ''), nullif(p.dados ->> 'faseOutro', '')),
-        'especie', p.dados ->> 'especie',
+        'fase', nullif(case p.dados ->> 'area'
+                  when 'Previdenciário' then p.dados ->> 'fasePrev'
+                  when 'Criminal' then p.dados ->> 'faseCrim'
+                  when 'Trabalhista' then p.dados ->> 'faseTrab'
+                  when 'Outro' then p.dados ->> 'faseOutro'
+                  else coalesce(nullif(p.dados ->> 'fasePrev', ''), nullif(p.dados ->> 'faseCrim', ''), nullif(p.dados ->> 'faseTrab', ''), p.dados ->> 'faseOutro')
+                end, ''),
+        'especie', case when p.dados ->> 'area' = 'Previdenciário' then p.dados ->> 'especie' end,
         'tribunal', p.dados ->> 'tribunal',
         'vara', p.dados ->> 'vara',
         'movimento', m.nome,

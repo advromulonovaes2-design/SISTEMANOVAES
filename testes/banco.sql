@@ -16,7 +16,7 @@ insert into auth.users(id, email, email_confirmed_at) values
   ('00000000-0000-0000-0000-000000000004', 'estranho@x.com', now());
 insert into public.acesso(email, gestor) values ('Gestor2@X.com', true), ('equipe@x.com', false);
 insert into public.clientes(id, dados) values ('10000000-0000-0000-0000-000000000001', '{"nome":"Cliente Um"}');
-insert into public.processos(id, dados) values ('20000000-0000-0000-0000-000000000001', '{"numero":"0820132-34.2026.8.14.0401","clienteId":"10000000-0000-0000-0000-000000000001","area":"Criminal","faseCrim":"Instrução"}');
+insert into public.processos(id, dados) values ('20000000-0000-0000-0000-000000000001', '{"numero":"0820132-34.2026.8.14.0401","clienteId":"10000000-0000-0000-0000-000000000001","area":"Criminal","faseCrim":"Instrução","fasePrev":"Requerimento no INSS","especie":"Outro"}');
 insert into public.honorarios(id, dados) values (gen_random_uuid(), '{"objeto":"H1"}');
 insert into public.equipe(id, dados) values (gen_random_uuid(), '{"nome":"Eq","email":"equipe@x.com"}'), (gen_random_uuid(), '{"nome":"G1","email":"gestor1@x.com"}');
 insert into public.tarefas(id, dados) values (gen_random_uuid(), '{"titulo":"T"}');
@@ -112,6 +112,9 @@ reset role;
 set role anon;
 select case when (public.acompanhamento_info('30000000-0000-4000-8000-000000000001') ->> 'cliente') = 'Cliente'
   then 'OK  link de acompanhamento mostra o cliente' else public.teste_falhou('ERRO acompanhamento') end;
+select case when (public.acompanhamento_info('30000000-0000-4000-8000-000000000001') -> 'processos' -> 0 ->> 'fase') = 'Instrução'
+             and (public.acompanhamento_info('30000000-0000-4000-8000-000000000001') -> 'processos' -> 0 ->> 'especie') is null
+  then 'OK  acompanhamento mostra a fase da área do processo (ignora campo de outra área)' else public.teste_falhou('ERRO fase do acompanhamento') end;
 select case when public.acompanhamento_info('30000000-0000-4000-8000-000000000009') is null
   then 'OK  link de acompanhamento errado não mostra nada' else public.teste_falhou('ERRO link errado mostrou dados') end;
 do $$ begin

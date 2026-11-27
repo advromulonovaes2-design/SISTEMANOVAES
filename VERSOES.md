@@ -9,6 +9,10 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.17 · 27/11/2026
+
+- **Link de acompanhamento do cliente mostrava a fase errada** quando o processo mudava de área (ex.: cadastrado como Previdenciário e depois trocado para Criminal): aparecia a fase antiga do INSS ("Requerimento no INSS") e a espécie de benefício. Agora a fase e a espécie seguem a área atual do processo. O mesmo acerto vale para os Relatórios (processos por fase) e para o resumo enviado ao assistente de IA.
+
 ## Versão 3.16 · 27/11/2026
 
 - **Cópia dos arquivos no Google Drive** (`robo/drive.py`): o robô copia os arquivos dos clientes para o Google Drive do escritório, numa pasta por cliente com o nome dele (subpastas: Documentos pessoais, Enviados pelo cliente, Processo <número>, Documentos do escritório). Nomes legíveis (data + o que é: "2026-11-18 RG e CPF (ou CNH).pdf"). Só acrescenta, nunca apaga; renomeia a pasta se o nome do cliente mudar; recria pasta apagada. Até 150 arquivos por rodada. Permissão `drive.file` (só enxerga o que criou). Liga com os Secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` (passo 14 do PASSO-A-PASSO).

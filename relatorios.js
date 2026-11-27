@@ -19,7 +19,8 @@ function barras(pares,fmt){
 }
 const contar=(l,f)=>{const o={};l.forEach(x=>{const k=f(x);if(k)o[k]=(o[k]||0)+1;});return Object.entries(o).sort((a,b)=>b[1]-a[1]);};
 const brlCurto=(v,curto)=>curto&&v>=1000?'R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:v>=10000?0:1})+' mil':brl(v);
-function faseDe(p){return p.fasePrev||p.faseCrim||p.faseTrab||p.faseOutro||'';}
+/* fase conforme a área (um campo de outra área pode ter ficado guardado de quando a área era outra) */
+function faseDe(p){const a=p.area;return(a==='Previdenciário'?p.fasePrev:a==='Criminal'?p.faseCrim:a==='Trabalhista'?p.faseTrab:a==='Outro'?p.faseOutro:(p.fasePrev||p.faseCrim||p.faseTrab||p.faseOutro))||'';}
 const ativoProc=p=>!/arquivad|encerrad|baixad|extint/i.test(faseDe(p));
 
 VIEWS.relatorios={t:'Relatórios',
