@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ficha de cadastro</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#161817">
+<link rel="icon" href="icone-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#F3EFE7;--surface:#FFFFFF;--ink:#161817;--muted:#5E5A52;--line:#DED6C6;--gold:#7D612C;--gold-soft:#F4ECDD;--ok:#067647;--ok-soft:#DFF4E8;--warn:#A64B00;--warn-soft:#FCEFD9;--pri:#161817;--pri-ink:#F3EFE7;
+  --f-display:"Spectral",Georgia,serif;--f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#121312;--surface:#1B1C1B;--ink:#F3EFE7;--muted:#A9A397;--line:#32332F;--gold:#C6A66B;--gold-soft:#2A2519;--ok:#4FD08F;--ok-soft:#14321F;--warn:#F5B041;--warn-soft:#3A2A12;--pri:#C6A66B;--pri-ink:#161817;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+.wrap{max-width:600px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+header img{width:44px;height:44px;border-radius:10px}
+header b{font-family:var(--f-display);font-size:20px;font-weight:600;display:block;line-height:1.2}
+header span{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+h1{font-family:var(--f-display);font-size:26px;font-weight:600;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+h2{font-family:var(--f-display);font-size:19px;font-weight:600;margin:0 0 10px}
+p{margin:0 0 14px;color:var(--muted)}
+fieldset{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:16px;margin:0 0 14px;min-width:0}
+legend{font-family:var(--f-display);font-size:18px;font-weight:600;padding:0 6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.full{grid-column:1/-1}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:500;min-width:0}
+label.f small{font-weight:400;color:var(--muted)}
+.req::after{content:" *";color:var(--warn)}
+input,select{font:inherit;font-size:16px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px}
+input[aria-invalid="true"]{border-color:var(--warn)}
+.seg{background:var(--gold-soft);border-color:var(--gold)}
+.seg p{color:var(--ink)}
+.seg ul{margin:0 0 12px;padding-left:20px;color:var(--ink)}
+.seg li{margin-bottom:4px}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14.5px}
+.chk input{width:20px;height:20px;margin-top:2px;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:var(--pri-ink)}
+.btn[disabled]{opacity:.6}
+.erro{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px 14px;font-size:14.5px;margin:0 0 14px}
+.ok{background:var(--ok-soft);color:var(--ok);border-radius:12px;padding:16px;margin:0 0 14px}
+.palavra{font-family:var(--f-display);font-size:26px;font-weight:600;letter-spacing:.04em;color:var(--ink);background:var(--surface);border:1px dashed var(--gold);border-radius:10px;padding:10px 14px;display:inline-block;margin:6px 0 12px}
+.aviso{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;margin-top:18px}
+.toggle{background:none;border:0;color:var(--gold);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;align-self:flex-start}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="icone-192.png" alt=""><div><b id="esc">Escritório</b><span>Ficha de cadastro</span></div></header>
+  <main id="tela"><p>Carregando…</p></main>
+  <div class="aviso">Seus dados vão direto para o sistema do escritório, protegido por senha, e são usados só para cuidar dos seus processos e falar com você. O escritório nunca pede a sua senha do gov.br por mensagem.</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dig=s=>String(s||'').replace(/\D/g,'');
+const token=new URLSearchParams(location.search).get('t')||'';
+const UFS=['','AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+let sb=null,info=null;
+const tela=h=>{$('#tela').innerHTML=h;window.scrollTo(0,0);};
+
+function cpfValido(c){c=dig(c);if(c.length!==11||/^(\d)\1{10}$/.test(c))return false;
+  for(const n of [9,10]){let s=0;for(let i=0;i<n;i++)s+=+c[i]*(n+1-i);let d=(s*10)%11;if(d===10)d=0;if(d!==+c[n])return false;}return true;}
+const mascaraCpf=v=>{const d=dig(v).slice(0,11);return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');};
+const mascaraFone=v=>{const d=dig(v).slice(0,11);if(d.length<=2)return d;if(d.length<=6)return`(${d.slice(0,2)}) ${d.slice(2)}`;if(d.length<=10)return`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;return`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;};
+const mascaraCep=v=>{const d=dig(v).slice(0,8);return d.length>5?d.slice(0,5)+'-'+d.slice(5):d;};
+
+const campo=(k,l,{tipo='text',req=false,full=false,ph='',dica='',auto='',modo='',max=200}={})=>`<label class="f${full?' full':''}"><span class="${req?'req':''}">${l}</span><input id="c_${k}" name="${k}" type="${tipo}" ${req?'required':''} placeholder="${esc(ph)}" maxlength="${max}" ${auto?`autocomplete="${auto}"`:''} ${modo?`inputmode="${modo}"`:''}>${dica?`<small>${dica}</small>`:''}</label>`;
+const selecao=(k,l,ops,{full=false}={})=>`<label class="f${full?' full':''}"><span>${l}</span><select id="c_${k}" name="${k}">${ops.map(o=>`<option value="${esc(o)}">${esc(o||'Selecione')}</option>`).join('')}</select></label>`;
+
+function formulario(){
+  tela(`<h1>Olá${info.cliente?', '+esc(info.cliente):''}!</h1>
+    <p>Preencha seus dados para o escritório deixar seu cadastro completo${info.processo?` no processo <b style="color:var(--ink)">${esc(info.processo)}</b>`:''}. Leva uns 3 minutos. Os campos com * são obrigatórios.</p>
+    <div id="msg"></div>
+    <form id="ficha" novalidate>
+      <fieldset><legend>Seus dados</legend><div class="grid">
+        ${campo('nome','Nome completo',{req:true,full:true,auto:'name'})}
+        ${campo('cpf','CPF',{req:true,ph:'000.000.000-00',modo:'numeric',max:14})}
+        ${campo('nascimento','Data de nascimento',{tipo:'date',auto:'bday'})}
+        ${campo('rg','RG',{modo:'numeric',max:30})}
+        ${campo('rgOrgao','Órgão emissor / UF',{ph:'SSP/PA',max:30})}
+        ${selecao('estadoCivil','Estado civil',['','solteiro(a)','casado(a)','em união estável','divorciado(a)','separado(a)','viúvo(a)'])}
+        ${campo('profissao','Profissão',{max:80})}
+        ${campo('nacionalidade','Nacionalidade',{ph:'brasileiro(a)',max:60})}
+        ${campo('mae','Nome da mãe',{max:120})}
+        ${campo('nit','NIT / PIS (se souber)',{modo:'numeric',max:20,dica:'Para causas no INSS.'})}
+      </div></fieldset>
+      <fieldset><legend>Contato</legend><div class="grid">
+        ${campo('telefone','Telefone / WhatsApp',{req:true,tipo:'tel',ph:'(91) 90000-0000',auto:'tel',max:16})}
+        ${campo('email','E-mail',{tipo:'email',auto:'email',max:120})}
+      </div></fieldset>
+      <fieldset><legend>Endereço</legend><div class="grid">
+        ${campo('cep','CEP',{ph:'00000-000',modo:'numeric',auto:'postal-code',max:9,dica:'Digite o CEP e o endereço é preenchido.'})}
+        ${campo('logradouro','Rua / avenida',{auto:'address-line1',max:150})}
+        ${campo('numero','Número',{max:20})}
+        ${campo('complemento','Complemento',{max:80})}
+        ${campo('bairro','Bairro',{max:80})}
+        ${campo('cidade','Cidade',{auto:'address-level2',max:80})}
+        ${selecao('uf','UF',UFS)}
+      </div></fieldset>
+      <fieldset class="seg"><legend>Palavra-chave de segurança</legend>
+        <p>Golpistas estão se passando por advogados para pedir dinheiro, dizendo que é para "liberar" valores do processo. Para se proteger, escolha uma palavra que só você e o escritório vão saber.</p>
+        <ul>
+          <li>Sempre que alguém disser que fala em nome do escritório, principalmente por um número novo, <b>peça a palavra-chave</b>.</li>
+          <li>Se a pessoa não souber, não passe dados, não clique em links e <b>não faça nenhum pagamento</b>. Ligue para o escritório no número que você já conhece.</li>
+          <li>Use uma palavra fácil de lembrar, como o nome de uma flor, de uma fruta ou de um bicho. Não use senha, data de nascimento nem nome de parente.</li>
+        </ul>
+        <div class="grid">
+          ${campo('palavraChave','Palavra-chave',{req:true,tipo:'password',auto:'off',max:60,dica:'Pelo menos 4 letras.'})}
+          ${campo('palavraChave2','Repita a palavra-chave',{req:true,tipo:'password',auto:'off',max:60})}
+        </div>
+        <button class="toggle" type="button" id="verPalavra">Mostrar a palavra-chave</button>
+      </fieldset>
+      <fieldset><label class="chk"><input type="checkbox" id="c_aceite"><span>Autorizo o escritório a usar estes dados para cuidar dos meus processos e falar comigo, conforme a Lei Geral de Proteção de Dados (LGPD).</span></label></fieldset>
+      <button class="btn pri" type="submit" id="enviar">Enviar meus dados</button>
+    </form>`);
+  const f=$('#ficha');
+  $('#c_cpf').addEventListener('input',e=>{e.target.value=mascaraCpf(e.target.value);e.target.removeAttribute('aria-invalid');});
+  $('#c_telefone').addEventListener('input',e=>{e.target.value=mascaraFone(e.target.value);});
+  $('#c_cep').addEventListener('input',e=>{e.target.value=mascaraCep(e.target.value);if(dig(e.target.value).length===8)buscarCep(dig(e.target.value));});
+  $('#verPalavra').onclick=()=>{const v=$('#c_palavraChave').type==='password';['#c_palavraChave','#c_palavraChave2'].forEach(s=>$(s).type=v?'text':'password');$('#verPalavra').textContent=v?'Esconder a palavra-chave':'Mostrar a palavra-chave';};
+  f.addEventListener('submit',enviar);
+}
+async function buscarCep(c){
+  try{const r=await fetch(`https://viacep.com.br/ws/${c}/json/`);const j=await r.json();if(j.erro)return;
+    const set=(k,v)=>{const el=$('#c_'+k);if(el&&v&&!el.value)el.value=v;};
+    set('logradouro',j.logradouro);set('bairro',j.bairro);set('cidade',j.localidade);set('uf',j.uf);
+    $('#c_numero').focus();}catch(_){}
+}
+function erro(msg,campoId){$('#msg').innerHTML=`<div class="erro" role="alert">${esc(msg)}</div>`;
+  if(campoId){const el=$('#c_'+campoId);if(el){el.setAttribute('aria-invalid','true');el.focus();}}else window.scrollTo(0,0);}
+async function enviar(e){
+  e.preventDefault();
+  const v=k=>(($('#c_'+k)||{}).value||'').trim();
+  if(v('nome').split(/\s+/).length<2)return erro('Escreva o nome completo.','nome');
+  if(!cpfValido(v('cpf')))return erro('Confira o CPF: os números não batem.','cpf');
+  if(dig(v('telefone')).length<10)return erro('Escreva o telefone com DDD.','telefone');
+  if(v('email')&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('email')))return erro('Confira o e-mail.','email');
+  if(v('palavraChave').length<4)return erro('A palavra-chave precisa ter pelo menos 4 letras.','palavraChave');
+  if(v('palavraChave')!==v('palavraChave2'))return erro('As duas palavras-chave não são iguais. Escreva de novo.','palavraChave2');
+  if(!$('#c_aceite').checked)return erro('Marque a autorização no final para poder enviar.');
+  const dados={};['nome','cpf','nascimento','rg','rgOrgao','estadoCivil','profissao','nacionalidade','mae','nit','telefone','email','cep','logradouro','numero','complemento','bairro','cidade','uf','palavraChave'].forEach(k=>{if(v(k))dados[k]=v(k);});
+  if(!dados.nacionalidade)dados.nacionalidade='brasileiro(a)';
+  dados.aceite='true';
+  const b=$('#enviar');b.disabled=true;b.textContent='Enviando…';
+  let r;try{r=await sb.rpc('ficha_enviar',{p_token:token,p_dados:dados});}catch(_){r={error:{message:'rede'}};}
+  b.disabled=false;b.textContent='Enviar meus dados';
+  if(r.error)return erro('Não foi possível enviar agora. Confira a internet e tente de novo.');
+  const res=r.data||{};
+  if(!res.ok){const m={link_invalido:'Este link não vale mais. Peça um novo ao escritório.',ja_enviado:'Esta ficha já foi enviada. Se precisar mudar algo, fale com o escritório.',
+      nome:'Escreva o nome completo.',cpf:'Confira o CPF.',telefone:'Escreva o telefone com DDD.',palavra:'A palavra-chave precisa ter pelo menos 4 letras.',aceite:'Marque a autorização no final para poder enviar.'};
+    return erro(m[res.erro]||'Não foi possível enviar. Tente de novo.');}
+  pronto(res.nome,dados.palavraChave);
+}
+function pronto(nome,palavra){
+  tela(`<div class="ok" role="status"><h1 style="margin:0 0 4px;color:inherit">Pronto${nome?', '+esc(nome):''}!</h1><div>Seus dados chegaram ao escritório.</div></div>
+    <fieldset class="seg"><legend>Guarde sua palavra-chave</legend>
+      <div class="palavra">${esc(palavra)}</div>
+      <p>Anote num lugar seguro. Quando alguém disser que fala em nome do ${esc(info.escritorio)}, peça essa palavra. Quem não souber a palavra não é do escritório: não passe dados e não faça pagamento.</p>
+      ${info.telefone?`<p>Telefone do escritório: <b style="color:var(--ink)">${esc(info.telefone)}</b></p>`:''}
+    </fieldset>
+    <p>Pode fechar esta página.</p>`);
+}
+(async function(){
+  const C=window.CONFIG||{};
+  if(!token||!C.SUPABASE_URL)return tela('<div class="erro">Link incompleto. Peça um novo ao escritório.</div>');
+  try{sb=window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY,{auth:{persistSession:false}});
+    const r=await sb.rpc('ficha_info',{p_token:token});info=r.data;}catch(_){info=null;}
+  if(!info)return tela('<div class="erro">Este link não existe ou não vale mais. Peça um novo ao escritório.</div>');
+  $('#esc').textContent=info.escritorio;document.title='Ficha de cadastro · '+info.escritorio;
+  if(info.usado)return tela('<h1>Ficha já enviada</h1><p>Recebemos seus dados por este link. Se precisar mudar alguma coisa, fale com o escritório.</p>');
+  if(!info.valido)return tela('<h1>Link vencido</h1><p>Este link não vale mais. Peça um novo ao escritório.</p>');
+  formulario();
+})();
+</script>
+</body>
+</html>

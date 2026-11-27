@@ -1077,6 +1077,9 @@ def montar_mensagem(itens):
     ag = sorted([x[1] for x in itens if isinstance(x, tuple) and x[0] == "agenda"])
     if ag:
         blocos.insert(1 if pz else 0, "AUDIÊNCIAS, PERÍCIAS E COMPROMISSOS\n" + "\n".join(t for _, _, t in ag))
+    fc = [x[1] for x in itens if isinstance(x, tuple) and x[0] == "ficha"]
+    if fc:
+        blocos.append("FICHAS DE CADASTRO PREENCHIDAS PELO CLIENTE\n" + "\n".join(fc))
     dc = [x[1] for x in itens if isinstance(x, tuple) and x[0] == "doc"]
     if dc:
         blocos.append("DOCUMENTOS ENVIADOS PELO CLIENTE\n" + "\n".join(dc))
@@ -1179,6 +1182,18 @@ def main():
         return
     avisar_envios(equipe, processos, clientes, avisos)
     gestores = ids_gestores(equipe)
+    try:  # fichas de cadastro preenchidas pelos clientes desde a última execução
+        desde = ANTERIOR.get("ultimaExecucao") or (datetime.now(TZ) - timedelta(days=1)).isoformat()
+        novas_fichas = sb("GET", "clientes", params={"select": "dados", "dados->cadastroPeloCliente->>em": f"gt.{desde}"}) or []
+        for c in novas_fichas:
+            d = c.get("dados") or {}
+            txt = f"• {d.get('nome', 'Cliente')} — telefone {d.get('telefone', '?')}. Confira o cadastro em Clientes."
+            for g in (gestores or ["_geral"]):
+                avisos[g].append(("ficha", txt))
+        if novas_fichas:
+            log(f"Fichas preenchidas por clientes: {len(novas_fichas)}")
+    except Exception as e:
+        log(f"Fichas de cadastro: erro {e}")
     if MODO == "tarde":  # lembrete da tarde: prazos que vencem hoje e amanhã
         try:
             calcular_avisos_prazos(registros("prazos"), processos, clientes, avisos, equipe, gestores, max_dias=1, min_dias=0)

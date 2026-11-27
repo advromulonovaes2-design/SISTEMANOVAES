@@ -647,6 +647,116 @@ begin
   end if;
 end $$;
 
+-- ---------------------------------------------------------------------
+-- Ficha de cadastro pelo cliente (página pública cadastro.html com link)
+-- O cliente preenche os dados e escolhe uma palavra-chave de segurança
+-- (contra o golpe do falso advogado). Ao enviar, o sistema cadastra ou
+-- atualiza o cliente e liga ao processo do link.
+-- ---------------------------------------------------------------------
+create table if not exists public.fichas (
+  token          uuid primary key default gen_random_uuid(),
+  processo_id    uuid,
+  cliente_id     uuid,
+  criado_por     text,
+  criado_em      timestamptz not null default now(),
+  expira         timestamptz not null default now() + interval '15 days',
+  usado_em       timestamptz,
+  cliente_salvo  uuid,
+  ativo          boolean not null default true
+);
+alter table public.fichas enable row level security;
+drop policy if exists escritorio on public.fichas;
+create policy escritorio on public.fichas for all to authenticated using (public.autorizado()) with check (public.autorizado());
+revoke all on public.fichas from anon;
+grant select, insert, update, delete on public.fichas to authenticated;
+
+create or replace function public.ficha_info(p_token uuid)
+returns json
+language sql stable security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'escritorio', coalesce(nullif((select dados ->> 'nome' from public.config where id = 'geral'), ''), 'Escritório de advocacia'),
+    'telefone', coalesce((select dados ->> 'telefone' from public.config where id = 'geral'), ''),
+    'cliente', split_part(coalesce(c.dados ->> 'nome', ''), ' ', 1),
+    'processo', coalesce(p.dados ->> 'numero', ''),
+    'usado', f.usado_em is not null,
+    'valido', f.ativo and f.expira > now() and f.usado_em is null)
+  from public.fichas f
+  left join public.clientes c on c.id = f.cliente_id
+  left join public.processos p on p.id = f.processo_id
+  where f.token = p_token;
+$$;
+grant execute on function public.ficha_info(uuid) to anon, authenticated;
+
+create or replace function public.ficha_enviar(p_token uuid, p_dados jsonb)
+returns json
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  f public.fichas%rowtype;
+  campos text[] := array['nome','nacionalidade','estadoCivil','profissao','nascimento','cpf','rg','rgOrgao','mae',
+                         'telefone','email','cep','logradouro','numero','complemento','bairro','cidade','uf','nit'];
+  k text;
+  v text;
+  novo jsonb := '{}'::jsonb;
+  cpf_dig text;
+  palavra text;
+  cid uuid;
+  ligado boolean := false;
+begin
+  select * into f from public.fichas where token = p_token for update;
+  if not found or not f.ativo or f.expira <= now() then return json_build_object('ok', false, 'erro', 'link_invalido'); end if;
+  if f.usado_em is not null then return json_build_object('ok', false, 'erro', 'ja_enviado'); end if;
+  if jsonb_typeof(p_dados) <> 'object' then return json_build_object('ok', false, 'erro', 'dados'); end if;
+
+  foreach k in array campos loop
+    v := btrim(coalesce(p_dados ->> k, ''));
+    if v <> '' then novo := novo || jsonb_build_object(k, left(v, 200)); end if;
+  end loop;
+  cpf_dig := regexp_replace(coalesce(novo ->> 'cpf', ''), '\D', '', 'g');
+  palavra := left(btrim(coalesce(p_dados ->> 'palavraChave', '')), 60);
+  if coalesce(novo ->> 'nome', '') = '' or length(novo ->> 'nome') < 5 then return json_build_object('ok', false, 'erro', 'nome'); end if;
+  if length(cpf_dig) <> 11 or cpf_dig ~ '^(\d)\1{10}$' then return json_build_object('ok', false, 'erro', 'cpf'); end if;
+  if length(regexp_replace(coalesce(novo ->> 'telefone', ''), '\D', '', 'g')) < 10 then return json_build_object('ok', false, 'erro', 'telefone'); end if;
+  if length(palavra) < 4 then return json_build_object('ok', false, 'erro', 'palavra'); end if;
+  if coalesce(p_dados ->> 'aceite', '') <> 'true' then return json_build_object('ok', false, 'erro', 'aceite'); end if;
+
+  novo := novo || jsonb_build_object(
+    'palavraChave', palavra,
+    'palavraChaveEm', to_char(now() at time zone 'America/Belem', 'YYYY-MM-DD'),
+    'conferirCadastro', true,
+    'cadastroPeloCliente', jsonb_build_object('em', now(), 'ficha', p_token::text),
+    'consentimentoLgpd', jsonb_build_object('em', now(), 'texto', 'Autorizo o escritório a usar estes dados para cuidar dos meus processos e falar comigo.'));
+
+  -- cliente: o do link; senão, o que já tem o mesmo CPF; senão, um novo
+  cid := f.cliente_id;
+  if cid is not null and not exists (select 1 from public.clientes where id = cid) then cid := null; end if;
+  if cid is null then
+    select id into cid from public.clientes
+     where regexp_replace(coalesce(dados ->> 'cpf', ''), '\D', '', 'g') = cpf_dig
+     order by criado_em limit 1;
+  end if;
+  if cid is null then
+    insert into public.clientes (dados) values (novo) returning id into cid;
+  else
+    update public.clientes set dados = dados || novo where id = cid;
+  end if;
+
+  -- processo do link: liga o cliente, se o processo ainda não tem outro cliente
+  if f.processo_id is not null then
+    update public.processos set dados = dados || jsonb_build_object('clienteId', cid::text)
+     where id = f.processo_id and coalesce(dados ->> 'clienteId', '') in ('', cid::text);
+    ligado := found;
+  end if;
+
+  update public.fichas set usado_em = now(), cliente_salvo = cid where token = p_token;
+  return json_build_object('ok', true, 'nome', split_part(novo ->> 'nome', ' ', 1), 'processo_ligado', ligado);
+end $$;
+revoke all on function public.ficha_enviar(uuid, jsonb) from public;
+grant execute on function public.ficha_enviar(uuid, jsonb) to anon, authenticated;
+
 -- e-mail do primeiro gestor (troque antes de rodar)
 insert into public.acesso (email, gestor) values ('SEU-EMAIL-AQUI@gmail.com', true)
 on conflict do nothing;

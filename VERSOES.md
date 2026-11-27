@@ -9,6 +9,12 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.15 · 27/11/2026
+
+- **Ficha de cadastro pelo cliente** (`cadastro.html` + `fichas.js`): o escritório gera um link (no processo, no cliente ou em Clientes › "Ficha para cliente novo") e manda pelo WhatsApp. O cliente preenche a qualificação completa e o endereço (CEP preenche sozinho), escolhe uma **palavra-chave de segurança** contra o golpe do falso advogado e autoriza o uso dos dados (LGPD). Ao enviar, o sistema cadastra o cliente (ou atualiza o que tem o mesmo CPF) e liga ao processo do link. O link vale 15 dias e uma vez só.
+- No cadastro do cliente: campo "Palavra-chave combinada com o cliente" e aviso para conferir os dados vindos da ficha (some ao salvar). O Assistente lista as fichas para conferir e o robô avisa os gestores.
+- **Banco** (já aplicado no Supabase do escritório): tabela `fichas` e funções `ficha_info` e `ficha_enviar` (link público, só grava os campos do cadastro).
+
 ## Versão 3.14 · 22/11/2026
 
 - **Robô**: os **gestores recebem cópia de todos os avisos de prazo** (com o nome do responsável). Prazo sem responsável vai direto para os gestores. Para desligar: `avisosPrazoGestores: false` nos Ajustes (config `geral`).

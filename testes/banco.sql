@@ -119,4 +119,22 @@ do $$ begin
   raise exception 'ERRO visitante leu clientes';
 exception when insufficient_privilege then raise notice 'OK  visitante não lê tabelas'; end $$;
 reset role;
+
+-- ficha de cadastro pelo cliente (link público)
+insert into public.fichas(token, processo_id) values ('40000000-0000-4000-8000-000000000001', '20000000-0000-0000-0000-000000000001');
+insert into public.fichas(token) values ('40000000-0000-4000-8000-000000000002');
+set role anon;
+select case when (public.ficha_enviar('40000000-0000-4000-8000-000000000002', '{"nome":"Nova Cliente","cpf":"123.456.789-09","telefone":"(91) 98888-7777","palavraChave":"girassol"}') ->> 'erro') = 'aceite'
+  then 'OK  ficha exige o aceite' else public.teste_falhou('ERRO ficha sem aceite foi aceita') end;
+select case when (public.ficha_enviar('40000000-0000-4000-8000-000000000002', '{"nome":"Nova Cliente","cpf":"123.456.789-09","telefone":"(91) 98888-7777","palavraChave":"girassol","aceite":"true","conferirCadastro":false,"hack":"x"}') ->> 'ok') = 'true'
+  then 'OK  visitante envia a ficha pelo link' else public.teste_falhou('ERRO ficha válida recusada') end;
+select case when (public.ficha_enviar('40000000-0000-4000-8000-000000000002', '{"nome":"Outra","cpf":"123.456.789-09","telefone":"(91) 98888-7777","palavraChave":"abcd","aceite":"true"}') ->> 'erro') = 'ja_enviado'
+  then 'OK  ficha não pode ser enviada duas vezes' else public.teste_falhou('ERRO ficha reaproveitada') end;
+do $$ begin
+  perform 1 from public.fichas;
+  raise exception 'ERRO visitante leu fichas';
+exception when insufficient_privilege then raise notice 'OK  visitante não lê as fichas'; end $$;
+reset role;
+select case when exists (select 1 from public.clientes where dados ->> 'palavraChave' = 'girassol' and dados ->> 'conferirCadastro' = 'true' and not dados ? 'hack')
+  then 'OK  ficha cria o cliente marcado para conferir, sem campos extras' else public.teste_falhou('ERRO ficha não criou o cliente certo') end;
 select 'TODOS OS TESTES DO BANCO PASSARAM';
