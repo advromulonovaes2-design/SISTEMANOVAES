@@ -174,6 +174,60 @@ As funções `buscar-intimacoes` e `djen` já estão instaladas no Supabase (o c
 
 ---
 
+## 14. Cópia dos arquivos no Google Drive (opcional)
+
+O robô copia os arquivos do sistema para o Google Drive do escritório, numa pasta por cliente, com o nome do cliente:
+
+```
+Palha Novaes Advocacia – Clientes
+└── Maria da Silva
+    ├── Documentos pessoais        (RG, comprovante, itens do checklist do cliente)
+    ├── Enviados pelo cliente      (o que ele mandou pelo link de envio)
+    ├── Processo 0801234-56.2026.8.14.0301   (checklist, procuração, contrato, peças)
+    └── Documentos do escritório   (procuração, contrato e recibos sem processo)
+```
+
+- Roda junto com o robô (7h e 16h). Cada rodada copia até 150 arquivos; o que faltar vai na próxima.
+- **Só acrescenta**: nunca apaga nada no Drive. Arquivo apagado no sistema continua no Drive.
+- Se o nome do cliente mudar (ou o processo ganhar número), a pasta é renomeada. Se alguém apagar uma pasta no Drive, o robô cria outra para os arquivos novos.
+- O robô usa a permissão **drive.file** do Google: ele só enxerga as pastas que ele mesmo criou, nada mais do seu Drive.
+- No sistema, o cadastro do cliente e o do processo mostram os botões **Pasta do cliente no Google Drive** e **Pasta deste processo**. A **Saúde do sistema** mostra a última cópia.
+- Os arquivos continuam no Supabase também: o Drive é uma segunda cópia, organizada.
+
+Para ligar (uma vez só, uns 15 minutos), entre com a conta do Google que vai guardar as pastas:
+
+1. Abra **console.cloud.google.com**. No topo, **Selecionar projeto** → **Novo projeto** → nome `Sistema escritorio` → **Criar**. Confira que o projeto novo ficou selecionado no topo.
+2. Menu ☰ → **APIs e serviços** → **Biblioteca** → procure **Google Drive API** → **Ativar**.
+3. Menu ☰ → **Google Auth Platform** (ou **APIs e serviços** → **Tela de consentimento OAuth**) → **Começar**. Nome do app: `Sistema do escritório`; e-mail de suporte: o seu → **Público-alvo: Externo** → e-mail de contato: o seu → aceite → **Criar**.
+4. Em **Acesso a dados** → **Adicionar ou remover escopos** → no filtro digite `drive.file` → marque `.../auth/drive.file` → **Atualizar** → **Salvar**.
+5. Em **Público-alvo** → **Publicar app** → **Confirmar** (status "Em produção"). Isso é importante: em "Teste" a autorização vence em 7 dias. Com a permissão drive.file não precisa de verificação do Google.
+6. Em **Clientes** → **Criar cliente** → tipo **Aplicativo da Web** → nome `robo` → em **URIs de redirecionamento autorizados** → **Adicionar URI** → `https://developers.google.com/oauthplayground` → **Criar**. Aparece o **ID do cliente** e a **Chave secreta do cliente**: **baixe o JSON ou copie as duas agora** (a chave secreta só aparece nesta hora).
+7. Abra **developers.google.com/oauthplayground**. Na engrenagem ⚙ (canto de cima, à direita) → marque **Use your own OAuth credentials** → cole o ID e a chave secreta → feche a engrenagem.
+8. À esquerda, no campo **Input your own scopes**, cole `https://www.googleapis.com/auth/drive.file` → **Authorize APIs** → escolha a conta do Google → **Continuar/Permitir** (se aparecer "o Google não verificou este app": **Avançado** → **Acessar**).
+9. De volta ao Playground: **Exchange authorization code for tokens**. Copie o **Refresh token** (começa com `1//`).
+10. No GitHub: repositório → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**, três vezes:
+
+| Nome | Valor |
+|---|---|
+| `GOOGLE_CLIENT_ID` | o ID do cliente (termina em `.apps.googleusercontent.com`) |
+| `GOOGLE_CLIENT_SECRET` | a chave secreta do cliente (começa com `GOCSPX-`) |
+| `GOOGLE_REFRESH_TOKEN` | o refresh token do passo 9 |
+
+11. Ainda no GitHub, abra `.github/workflows/robo.yml` → lápis ✏️ (Edit) → logo abaixo da linha `VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}`, acrescente estas 3 linhas, com os mesmos espaços na frente → **Commit changes**:
+
+```yaml
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+```
+
+12. Banco: as tabelas `drive_pastas` e `drive_sync` vêm em `banco/2-atualizacao.sql` (instalação nova: já estão no `1-criar-tabelas.sql`).
+13. Teste: **Actions** → **Robô** → **Run workflow** → marque **Só mandar uma mensagem de teste** → **Run**. No fim do registro aparece "Google Drive: N arquivo(s) copiado(s)" e a pasta surge no seu Drive. A primeira leva completa vai na rotina seguinte.
+
+Se a Saúde do sistema disser "o Google recusou a autorização", repita os passos 7 a 9 e troque o secret `GOOGLE_REFRESH_TOKEN`. Nunca cole essas chaves no chat nem no `config.js`.
+
+---
+
 ## Como funciona a assinatura da procuração e do contrato
 
 1. Na aba **Documentos**, gere a procuração ou o contrato. O texto aparece pronto, com a qualificação do cliente, os advogados, os poderes, o modo de pagamento e a logo. Você pode editar antes de gerar o PDF.

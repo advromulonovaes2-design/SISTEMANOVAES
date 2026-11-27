@@ -137,4 +137,44 @@ exception when insufficient_privilege then raise notice 'OK  visitante não lê 
 reset role;
 select case when exists (select 1 from public.clientes where dados ->> 'palavraChave' = 'girassol' and dados ->> 'conferirCadastro' = 'true' and not dados ? 'hack')
   then 'OK  ficha cria o cliente marcado para conferir, sem campos extras' else public.teste_falhou('ERRO ficha não criou o cliente certo') end;
+
+-- cópia no Google Drive: o robô (service_role) vê o que falta; a equipe só lê; visitante nada
+insert into storage.objects(bucket_id, name, metadata) values
+  ('arquivos', 'clientes/a/1.pdf', '{"size":10,"mimetype":"application/pdf"}'),
+  ('arquivos', 'clientes/a/2.pdf', '{"size":20}'),
+  ('envios', 'tok/3.jpg', '{"size":30}'),
+  ('backups', 'b.json.gz', '{"size":40}'),
+  ('arquivos', 'x/.emptyFolderPlaceholder', '{}');
+set role service_role;
+select case when (select count(*) from public.drive_pendentes(10)) = 3 and (select max(total) from public.drive_pendentes(1)) = 3
+  then 'OK  drive_pendentes lista arquivos e envios (sem backups)' else public.teste_falhou('ERRO drive_pendentes contou errado') end;
+insert into public.drive_sync(caminho, drive_id) values ('arquivos:clientes/a/1.pdf', 'g1');
+select public.drive_falhou('envios:tok/3.jpg', 'falha'), public.drive_falhou('envios:tok/3.jpg', 'falha');
+select case when (select count(*) from public.drive_pendentes(10)) = 2
+  then 'OK  arquivo copiado sai da fila; com 2 falhas ainda tenta' else public.teste_falhou('ERRO fila do Drive após cópia') end;
+select public.drive_falhou('envios:tok/3.jpg', 'falha');
+select public.drive_falhou('arquivos:clientes/a/1.pdf', 'não deve sobrescrever');
+select case when (select count(*) from public.drive_pendentes(10)) = 1 and (select drive_id from public.drive_sync where caminho = 'arquivos:clientes/a/1.pdf') = 'g1'
+  then 'OK  depois de 3 falhas o arquivo para de ser tentado' else public.teste_falhou('ERRO falhas do Drive') end;
+insert into public.drive_pastas(chave, drive_id, nome) values ('cli:a', 'p1', 'Fulano');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claims', '{"email":"equipe@x.com","sub":"00000000-0000-0000-0000-000000000003","aal":"aal1"}', false);
+select case when (select drive_id from public.drive_pastas where chave = 'cli:a') = 'p1'
+  then 'OK  equipe vê a pasta do cliente no Drive' else public.teste_falhou('ERRO equipe não vê drive_pastas') end;
+do $$ begin
+  insert into public.drive_pastas(chave, drive_id) values ('cli:b', 'p2');
+  raise exception 'ERRO equipe gravou em drive_pastas';
+exception when insufficient_privilege then raise notice 'OK  equipe não grava em drive_pastas'; end $$;
+do $$ begin
+  perform public.drive_pendentes(10);
+  raise exception 'ERRO equipe chamou drive_pendentes';
+exception when insufficient_privilege then raise notice 'OK  equipe não chama drive_pendentes'; end $$;
+reset role;
+set role anon;
+do $$ begin
+  perform 1 from public.drive_sync;
+  raise exception 'ERRO visitante leu drive_sync';
+exception when insufficient_privilege then raise notice 'OK  visitante não lê drive_sync'; end $$;
+reset role;
 select 'TODOS OS TESTES DO BANCO PASSARAM';

@@ -756,3 +756,66 @@ begin
 end $$;
 revoke all on function public.ficha_enviar(uuid, jsonb) from public;
 grant execute on function public.ficha_enviar(uuid, jsonb) to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- Cópia dos arquivos no Google Drive (robo/drive.py)
+-- O robô guarda aqui o que já copiou e o endereço de cada pasta no Drive.
+-- A equipe só lê (para o botão "Abrir pasta no Google Drive"); quem grava
+-- é o robô, com a chave secreta.
+-- ---------------------------------------------------------------------
+create table if not exists public.drive_pastas (
+  chave          text primary key,   -- raiz, cli:<id>, proc:<id>, pes:<id>, env:<id>, esc:<id>
+  drive_id       text not null,
+  nome           text,
+  atualizado_em  timestamptz not null default now()
+);
+create table if not exists public.drive_sync (
+  caminho     text primary key,      -- <bucket>:<caminho no Storage>
+  drive_id    text,
+  pasta_id    text,
+  cliente_id  uuid,
+  nome        text,
+  enviado_em  timestamptz,
+  erro        text,
+  tentativas  int not null default 0
+);
+alter table public.drive_pastas enable row level security;
+alter table public.drive_sync enable row level security;
+drop policy if exists leitura on public.drive_pastas;
+create policy leitura on public.drive_pastas for select to authenticated using (public.autorizado());
+drop policy if exists leitura on public.drive_sync;
+create policy leitura on public.drive_sync for select to authenticated using (public.autorizado());
+revoke all on public.drive_pastas, public.drive_sync from anon;
+revoke insert, update, delete on public.drive_pastas, public.drive_sync from authenticated;
+grant select on public.drive_pastas, public.drive_sync to authenticated;
+grant all on public.drive_pastas, public.drive_sync to service_role;
+
+create or replace function public.drive_pendentes(p_limite int default 150)
+returns table (bucket text, caminho text, tamanho bigint, tipo text, criado_em timestamptz, total bigint)
+language sql stable security definer
+set search_path = public, storage
+as $$
+  select o.bucket_id::text, o.name::text, coalesce((o.metadata ->> 'size')::bigint, 0), o.metadata ->> 'mimetype',
+         o.created_at, count(*) over ()
+    from storage.objects o
+   where o.bucket_id in ('arquivos', 'envios')
+     and o.name not like '%.emptyFolderPlaceholder'
+     and not exists (select 1 from public.drive_sync s
+                      where s.caminho = o.bucket_id || ':' || o.name
+                        and (s.drive_id is not null or s.tentativas >= 3))
+   order by o.created_at
+   limit greatest(1, least(p_limite, 1000));
+$$;
+create or replace function public.drive_falhou(p_caminho text, p_erro text)
+returns void
+language sql security definer
+set search_path = public
+as $$
+  insert into public.drive_sync (caminho, erro, tentativas) values (p_caminho, left(p_erro, 300), 1)
+  on conflict (caminho) do update set erro = excluded.erro, tentativas = public.drive_sync.tentativas + 1
+   where public.drive_sync.drive_id is null;
+$$;
+revoke all on function public.drive_pendentes(int) from public, anon, authenticated;
+revoke all on function public.drive_falhou(text, text) from public, anon, authenticated;
+grant execute on function public.drive_pendentes(int) to service_role;
+grant execute on function public.drive_falhou(text, text) to service_role;

@@ -1003,6 +1003,37 @@ def storage(method, caminho, corpo=None, tipo="application/json", extra=None):
         return json.loads(t) if t.strip() else None
 
 
+def baixar(bucket, caminho):
+    """Bytes de um arquivo do Storage (para a cópia no Google Drive)."""
+    h = {"apikey": SB_KEY, "User-Agent": UA_SB}
+    if SB_KEY.startswith("eyJ"):
+        h["Authorization"] = "Bearer " + SB_KEY
+    url = f"{SB_URL}/storage/v1/object/{bucket}/{urllib.parse.quote(caminho)}"
+    with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=180) as r:
+        return r.read()
+
+
+def copiar_para_drive(limite=150):
+    """Cópia dos arquivos dos clientes no Google Drive (robo/drive.py). Desligada sem os Secrets GOOGLE_*."""
+    import drive as DRIVE  # noqa: E402  (robo/drive.py)
+    if not DRIVE.configurado():
+        if any((DRIVE.G_ID, DRIVE.G_SECRET, DRIVE.G_REFRESH)):
+            log("Google Drive: falta algum dos Secrets GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN "
+                "(ou as linhas deles no robo.yml).")
+            STATUS["drive"] = {"ativo": False, "erro": "falta algum dos Secrets GOOGLE_*", "em": datetime.now(TZ).isoformat()}
+        return
+    try:
+        cfg = (sb("GET", "config", params={"select": "dados", "id": "eq.geral"}) or [{}])[0].get("dados") or {}
+    except Exception:
+        cfg = {}
+    app_js = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app.js")
+    try:
+        STATUS["drive"] = DRIVE.sincronizar(sb, baixar, log, cfg.get("nome") or "Escritório", app_js, limite=limite)
+    except Exception as e:
+        log(f"Google Drive: erro {e}")
+        STATUS["drive"] = {"ativo": True, "erro": str(e)[:300], "em": datetime.now(TZ).isoformat()}
+
+
 def fazer_backup():
     log("Cópia de segurança: lendo todas as tabelas…")
     dados, contagem = {"gerado_em": datetime.now(TZ).isoformat(), "versao": 3, "tabelas": {}}, {}
@@ -1125,7 +1156,7 @@ def registrar_status(equipe=None):
             if not tem:
                 sem.append(m.get("nome") or "?")
         d["semCanal"] = sem
-    d["versaoRobo"] = "3.2"
+    d["versaoRobo"] = "3.3"
     try:
         sb("POST", "config", {"id": "robo", "dados": d}, prefer="resolution=merge-duplicates,return=minimal")
         ANTERIOR.update(d)
@@ -1163,6 +1194,7 @@ def main():
             log(f"  {m.get('nome', '?')}: {'enviado' if ok else 'NÃO enviado'} "
                 f"(canais tentados: {', '.join(canais) or 'nenhum canal cadastrado na Equipe'})")
         log(f"Resultado do teste: {dict(ENVIADOS)}")
+        copiar_para_drive(limite=20)
         registrar_status(equipe)
         return
 
@@ -1250,6 +1282,7 @@ def main():
                 enviar_push_membro(m, assunto, texto)
     log(f"Avisos enviados: {ENVIADOS}")
     push_disponivel()
+    copiar_para_drive()
     registrar_status(equipe)
     if (MODO != "tarde" and HOJE.weekday() == 0) or FORCAR_BACKUP:
         try:

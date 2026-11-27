@@ -39,5 +39,7 @@ const vRobo = JSON.parse(execFileSync('node', [path.join(raiz, 'robo', 'vencimen
 confere('robô: vencimento igual ao da tela (15 dias úteis, DJEN 10/11/2026)', vRobo, ['2026-12-03']);
 try { console.log(execFileSync('python3', [path.join(raiz, 'robo', 'teste_automatico.py')]).toString()); }
 catch (e) { console.log(String(e.stdout || e.message)); confere('robô: leitura automática de audiências e prazos', 'falhou', 'ok'); }
+try { console.log(execFileSync('python3', [path.join(raiz, 'robo', 'teste_drive.py')]).toString()); }
+catch (e) { console.log(String(e.stdout || e.message)); confere('robô: cópia no Google Drive', 'falhou', 'ok'); }
 if (falhas) { console.error(`\n${falhas} teste(s) falharam.`); process.exit(1); }
 console.log('\nTodos os cálculos conferem.');

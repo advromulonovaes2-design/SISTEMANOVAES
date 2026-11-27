@@ -9,6 +9,13 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.16 · 27/11/2026
+
+- **Cópia dos arquivos no Google Drive** (`robo/drive.py`): o robô copia os arquivos dos clientes para o Google Drive do escritório, numa pasta por cliente com o nome dele (subpastas: Documentos pessoais, Enviados pelo cliente, Processo <número>, Documentos do escritório). Nomes legíveis (data + o que é: "2026-11-18 RG e CPF (ou CNH).pdf"). Só acrescenta, nunca apaga; renomeia a pasta se o nome do cliente mudar; recria pasta apagada. Até 150 arquivos por rodada. Permissão `drive.file` (só enxerga o que criou). Liga com os Secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` (passo 14 do PASSO-A-PASSO).
+- No sistema (`drive.js`): botões **Pasta do cliente no Google Drive** e **Pasta deste processo** nos cadastros; linha **Cópia no Google Drive** na Saúde do sistema.
+- **Banco**: tabelas `drive_pastas` e `drive_sync`, funções `drive_pendentes` e `drive_falhou` (só o robô usa; a equipe só lê as pastas).
+- Testes: `robo/teste_drive.py` (Google e banco de mentira), rodando em `node testes/calculos.js`.
+
 ## Versão 3.15 · 27/11/2026
 
 - **Ficha de cadastro pelo cliente** (`cadastro.html` + `fichas.js`): o escritório gera um link (no processo, no cliente ou em Clientes › "Ficha para cliente novo") e manda pelo WhatsApp. O cliente preenche a qualificação completa e o endereço (CEP preenche sozinho), escolhe uma **palavra-chave de segurança** contra o golpe do falso advogado e autoriza o uso dos dados (LGPD). Ao enviar, o sistema cadastra o cliente (ou atualiza o que tem o mesmo CPF) e liga ao processo do link. O link vale 15 dias e uma vez só.
