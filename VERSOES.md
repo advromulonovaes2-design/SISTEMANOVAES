@@ -9,6 +9,10 @@ A versão em uso aparece em **Ajustes → Sobre**.
 
 ---
 
+## Versão 3.18 · 27/11/2026
+
+- **Completar pelo CNJ**: quando o DataJud (CNJ) está sobrecarregado, a consulta desiste em 40 segundos (antes podia ficar mais de 1 minuto) e o aviso diz claramente que o problema é no CNJ e que dá para salvar o processo e completar depois. Resposta com parte do índice do CNJ falhando não vira mais "processo não encontrado".
+
 ## Versão 3.17 · 27/11/2026
 
 - **Link de acompanhamento do cliente mostrava a fase errada** quando o processo mudava de área (ex.: cadastrado como Previdenciário e depois trocado para Criminal): aparecia a fase antiga do INSS ("Requerimento no INSS") e a espécie de benefício. Agora a fase e a espécie seguem a área atual do processo. O mesmo acerto vale para os Relatórios (processos por fase) e para o resumo enviado ao assistente de IA.

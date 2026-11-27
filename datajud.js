@@ -25,7 +25,7 @@ async function buscarCnj(n){
   let res=null;
   try{const{data,error}=await sb.functions.invoke('datajud',{body:{numero:n}});if(error){try{res=await error.context.json();}catch(_){res={erro:'rede'};}}else res=data;}catch(_){res={erro:'rede'};}
   if(!SH||SH.col!=='processos')return;if(bt)bt.disabled=false;
-  if(!res||res.erro){if(st)st.textContent=res&&res.erro==='numero_invalido'?'Número de processo não reconhecido.':res&&res.erro==='chave_cnj'?'O CNJ trocou a chave pública. Veja o passo a passo (DataJud).':'Não foi possível consultar o CNJ agora. Tente de novo em alguns minutos.';return;}
+  if(!res||res.erro){if(st)st.textContent=res&&res.erro==='numero_invalido'?'Número de processo não reconhecido.':res&&res.erro==='chave_cnj'?'O CNJ trocou a chave pública. Veja o passo a passo (DataJud).':res&&(res.erro==='cnj_lento'||res.erro==='cnj_fora')?'O sistema do CNJ (DataJud) está fora do ar ou sobrecarregado agora. Pode salvar o processo assim e tocar em "Completar pelo CNJ" mais tarde.':'Não foi possível consultar o CNJ agora. Tente de novo em alguns minutos.';return;}
   if(!res.achou){if(st)st.textContent=`O CNJ ainda não tem este processo (${res.tribunal}). Processos novos e sigilosos podem demorar a aparecer.`;return;}
   res.consultadoEm=new Date().toISOString();SH.cnj=res;
   const preenche=(id,val)=>{const el=$('#'+id);if(el&&val&&!el.value.trim()){el.value=val;return 1;}return 0;};

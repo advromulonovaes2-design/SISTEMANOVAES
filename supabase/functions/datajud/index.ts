@@ -41,15 +41,24 @@ Deno.serve(async (req: Request) => {
   const n = numero.replace(/\D/g, "");
   const a = alias(n);
   if (!a) return json({ erro: "numero_invalido" }, 400);
-  const r = await fetch(`https://api-publica.datajud.cnj.jus.br/api_publica_${a}/_search`, {
-    method: "POST",
-    headers: { Authorization: "APIKey " + CHAVE, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: { match: { numeroProcesso: n } }, size: 10 }),
-  });
+  let r: Response;
+  try {
+    // o DataJud às vezes fica sobrecarregado e demora mais de 1 minuto: desiste antes e avisa
+    r = await fetch(`https://api-publica.datajud.cnj.jus.br/api_publica_${a}/_search`, {
+      method: "POST",
+      headers: { Authorization: "APIKey " + CHAVE, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: { match: { numeroProcesso: n } }, size: 10 }),
+      signal: AbortSignal.timeout(40000),
+    });
+  } catch (_) {
+    return json({ erro: "cnj_lento" }, 504);
+  }
   if (r.status === 401 || r.status === 403) return json({ erro: "chave_cnj" }, 502);
   if (!r.ok) return json({ erro: "cnj_fora", status: r.status }, 502);
   const d = await r.json();
   const hits = ((d.hits || {}).hits || []).map((h: { _source: Record<string, any> }) => h._source || {});
+  // sobrecarga: parte do índice não respondeu, então "não achou" não é confiável
+  if (!hits.length && (d.timed_out || ((d._shards || {}).failed || 0) > 0)) return json({ erro: "cnj_fora", status: 200 }, 502);
   if (!hits.length) return json({ ok: true, achou: false, tribunal: a.toUpperCase() });
   const movs: { data: string; nome: string; grau: string }[] = [];
   for (const s of hits) {
